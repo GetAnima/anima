@@ -1,0 +1,32 @@
+{
+  "name": "@getanima/core",
+  "version": "0.1.0",
+  "description": "Identity and memory infrastructure for AI agents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/getanima/anima.git"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "memory",
+    "identity",
+    "persistence",
+    "llm",
+    "framework"
+  ],
+  "author": "Kip <kip@getanima.dev>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/getanima/anima/issues"
+  },
+  "homepage": "https://getanima.dev"
+}
