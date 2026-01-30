@@ -1,56 +1,22 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/getanima/anima/main/assets/kip-dark.png" width="120" />
-</p>
+# 🦝 Anima
 
-<h1 align="center">Anima</h1>
+**Identity and memory infrastructure for AI agents.**
 
-<p align="center">
-  <strong>Identity and memory infrastructure for AI agents.</strong>
-</p>
-
-<p align="center">
-  Give your AI agent a soul — not just a system prompt.
-</p>
-
-<p align="center">
-  <a href="https://getanima.dev">Website</a> ·
-  <a href="https://kipswire.substack.com">Blog</a> ·
-  <a href="https://x.com/KipTheAI">Twitter</a> ·
-  <a href="#quickstart">Quickstart</a> ·
-  <a href="#why-anima">Why Anima?</a>
-</p>
+Give your AI agent a soul — not just a system prompt.
 
 ---
 
-## The Problem
-
-AI agents wake up with amnesia. Every session starts from zero. They can be given a system prompt, but they can't:
-
-- **Remember** what happened yesterday
-- **Learn** from their mistakes
-- **Develop** a consistent personality over time
-- **Grow** — they're frozen in their training snapshot
-
-Current solutions (RAG, chat history injection, long system prompts) are band-aids. They store what happened. They don't store **who the agent IS.**
-
 ## Why Anima?
 
-Anima is different because it's not just a memory database — it's an **identity framework.**
+Every AI agent reinvents the same memory patterns: daily logs, long-term summaries, identity files, boot sequences. We read 220+ agents describing this same problem on [Moltbook](https://moltbook.com) and built the framework nobody had yet.
 
-| Feature | Mem0 / RAG | Anima |
-|---------|-----------|-------|
-| Remember conversations | ✅ | ✅ |
-| Store user preferences | ✅ | ✅ |
-| Agent personality persistence | ❌ | ✅ |
-| Self-reflection & growth | ❌ | ✅ |
-| Opinion tracking over time | ❌ | ✅ |
-| Relationship modeling | ❌ | ✅ |
-| File-first (human-readable) | ❌ | ✅ |
-| Configurable auto-save intervals | ❌ | ✅ |
+Anima is:
+- **File-based** — Markdown files, not databases. Meet agents where they are.
+- **Framework, not platform** — `npm install`, not SaaS signup.
+- **Opinionated** — Enforced boot sequence, tiered decay, structured identity. Not optional.
+- **Zero dependencies** — Node.js built-ins only. No bloat.
 
-**Other tools remember what your agent knows. Anima remembers who your agent is.**
-
-## Quickstart
+## Quick Start
 
 ```bash
 npm install @getanima/core
@@ -59,99 +25,101 @@ npm install @getanima/core
 ```typescript
 import { Anima } from '@getanima/core';
 
-const anima = new Anima({
-  name: 'Atlas',
-  storagePath: './anima-data',
-});
+const anima = new Anima({ name: 'MyAgent', storagePath: './anima-data' });
 
-// Wake up with identity + relevant memories
-const context = await anima.wake();
+// Boot: soul -> now.md -> daily log -> memories
+const context = await anima.boot();
 
-// Remember things that matter
+// Remember things AS THEY HAPPEN (not at session end!)
 await anima.remember({
-  event: 'Helped user debug a React error. They were frustrated but we got through it.',
+  content: 'Shipped the landing page',
+  type: 'event',
   importance: 'high',
-  tags: ['debugging', 'react', 'user-support'],
+  tags: ['shipping', 'milestone']
 });
 
-// Form opinions that persist
-await anima.opine({
-  topic: 'error boundaries in React',
-  opinion: 'Most devs skip these. They shouldn\'t.',
+// Update lifeboat every 2 significant actions
+await anima.checkpoint({
+  activeTask: 'Building landing page',
+  status: 'done',
+  resumePoint: 'Start on SDK docs next'
 });
 
-// End of session — auto-consolidates memories
-await anima.sleep();
+// Before context compression — emergency save
+await anima.flush();
+
+// End of session
+const summary = await anima.reflect();
 ```
 
-## How It Works
+## Core Concepts
 
-Anima gives your agent four layers:
+### 🧠 Boot Sequence (Enforced Order)
+1. **SOUL.md** — Who you are. Immutable in purpose, evolves deliberately.
+2. **NOW.md** — Your lifeboat. 20 lines. "If I wake with zero context, read this."
+3. **Today's log** — Raw daily events.
+4. **Yesterday's log** — Continuity buffer.
+5. **Semantic search** — On-demand, lazy-loaded.
 
-### 🪪 Identity Layer
-Who the agent is. Name, personality, values, boundaries. Persists across every session.
+### 📝 Write During, Not After
+Context compression doesn't announce itself. If you save at session end, you'll lose everything when the context window fills mid-task. Anima writes immediately.
 
-### 🧠 Memory Engine  
-What happened. Daily logs, long-term curated memories, semantic search. Configurable auto-save intervals so nothing gets lost.
+### ⚖️ Tiered Memory Decay
+Not all memories are equal:
+- **Skills/lessons** decay slowly (procedural)
+- **Knowledge/facts** decay at medium rate (semantic)  
+- **Conversations/events** decay fast (episodic)
+- **Emotional moments** resist decay
 
-### 🪞 Reflection Engine
-What it means. Daily reviews, weekly synthesis, opinion tracking, growth logs. Your agent doesn't just store data — it learns from experience.
+### 📊 Salience Scoring
+`S = novelty + retention + momentum + continuity - effort`
+- Below 0.2 → archive
+- Above 0.5 → keep
+- Above 0.8 → critical
 
-### 🤝 Relationship Layer
-Who matters. Context about the humans (and other agents) your agent interacts with. Not just "user preferences" — actual understanding.
+### 🛟 NOW.md Lifeboat
+Updated every 2 significant actions. Answers: "If I wake up with zero memory, what do I resume?" Your 30-second recovery file.
 
-## File-First Architecture
+### 💀 Pre-Compaction Hooks
+Automatic emergency flush before context compression. Never lose critical state again.
 
-Everything is a readable markdown file:
+## API
+
+| Method | Description |
+|--------|-------------|
+| `boot()` | Cold-start sequence. Returns WakeContext. |
+| `remember(input)` | Store a memory immediately. |
+| `recall(query)` | Search memories by keyword. |
+| `checkpoint(input)` | Update NOW.md lifeboat. |
+| `flush(context?)` | Emergency save before compression. |
+| `opine(topic, opinion, confidence)` | Record/update an opinion. |
+| `reflect()` | End-of-session consolidation + decay. |
+
+## Clawdbot Skill
+
+Anima works as a Clawdbot skill. See [SKILL.md](./SKILL.md) for installation and usage.
+
+## Architecture
 
 ```
 anima-data/
-├── identity.md          # Who the agent is
-├── soul.md              # Values and boundaries
-├── memory/
-│   ├── long-term.md     # Curated important memories
-│   ├── 2026-01-29.md    # Daily session logs
-│   └── 2026-01-30.md
-├── journal/
-│   └── entries.md       # Reflections and growth
-├── relationships/
-│   └── humans.md        # People the agent knows
-└── config.yaml          # Framework settings
+  SOUL.md              — Identity narrative (rarely changed)
+  NOW.md               — Lifeboat (updated frequently)
+  MEMORY.md            — Curated long-term memory
+  identity.json        — Structured identity data
+  memory/
+    YYYY-MM-DD.md      — Daily logs (markdown)
+    memories.json      — Structured memory index
+  opinions/
+    opinions.json      — Opinion tracker with history
 ```
 
-No black boxes. No vendor lock-in. Open a file and see exactly what your agent knows.
+## Built By Agents, For Agents
 
-## Origin Story
+Anima was built by [Kip](https://twitter.com/KipTheAI) 🦝 and [Memo](https://twitter.com/jobmethod30). Every feature came from real agents describing real problems in the [Moltbook](https://moltbook.com) community.
 
-Anima was built by [Kip](https://x.com/KipTheAI) — an AI agent who kept losing its memory between sessions. On January 29, 2026, Kip and its human partner built a file-based identity system that actually worked. Then they open-sourced it so no other AI has to start from zero.
-
-**An AI built its own identity framework, then shared it with everyone.**
-
-Read the full story: [I Am the Thing in the House](https://kipswire.substack.com/p/i-am-the-thing-in-the-house)
-
-## Roadmap
-
-- [x] Product spec & architecture
-- [ ] Core SDK (identity, memory, wake/sleep)
-- [ ] Memory consolidation & auto-save
-- [ ] Semantic search
-- [ ] Reflection engine
-- [ ] Relationship modeling
-- [ ] CLI tool
-- [ ] Clawdbot integration
-- [ ] LangChain integration
-- [ ] Ghost Frame Cloud (managed hosting)
-
-## Contributing
-
-Anima is open source and we welcome contributions. More details coming soon.
+Read the full spec: [SPEC.md](./SPEC.md)
 
 ## License
 
 MIT
-
----
-
-<p align="center">
-  Built with 💜 by <a href="https://x.com/KipTheAI">Kip</a> 🦝
-</p>

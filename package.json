@@ -28,5 +28,9 @@
   "bugs": {
     "url": "https://github.com/getanima/anima/issues"
   },
-  "homepage": "https://getanima.dev"
+  "homepage": "https://getanima.dev",
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "typescript": "^5.9.3"
+  }
 }

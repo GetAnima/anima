@@ -1,100 +1,304 @@
 /**
  * Anima — The main class.
  * 
+ * Identity and memory infrastructure for AI agents.
+ * File-based. Markdown-native. Zero external dependencies.
+ * 
  * Usage:
  * ```typescript
- * const anima = new Anima({ name: 'Kip' });
- * const context = await anima.wake();
- * await anima.remember({ content: 'Something important happened.' });
- * await anima.sleep();
+ * import { Anima } from '@getanima/core';
+ * 
+ * const anima = new Anima({ name: 'Kip', storagePath: './anima-data' });
+ * 
+ * // Boot sequence: soul -> now.md -> daily log -> memories
+ * const context = await anima.boot();
+ * 
+ * // Remember things as they happen (not at session end!)
+ * await anima.remember({ content: 'Built Anima SDK with Memo tonight.' });
+ * 
+ * // Update lifeboat every 2 significant actions
+ * await anima.checkpoint({ activeTask: 'Building SDK', status: 'in-progress', resumePoint: 'Finishing memory engine' });
+ * 
+ * // Before context compaction
+ * await anima.flush();
+ * 
+ * // End of session
+ * await anima.reflect();
  * ```
  */
 
-import type { AnimaConfig, WakeContext, Memory, Opinion, SessionSummary } from './types';
+import type { AnimaConfig, WakeContext, Memory, Checkpoint, SessionSummary, Opinion, Relationship } from './types';
+import { MemoryEngine } from './memory';
+import { IdentityManager } from './identity';
+import { sessionId, now, dateKey } from './utils';
 
 export class Anima {
-  private config: AnimaConfig;
-  private sessionId: string;
+  private config: Required<AnimaConfig>;
+  private session: string;
+  private identity: IdentityManager;
+  private memory: MemoryEngine;
+  private bootTime: number = 0;
+  private memoriesThisSession: number = 0;
+  private booted: boolean = false;
 
   constructor(config: AnimaConfig) {
     this.config = {
       storagePath: './anima-data',
       autoSaveInterval: 30,
       model: 'claude',
+      decay: { procedural: 0.0003, semantic: 0.001, episodic: 0.003 },
+      identity: {},
       ...config,
     };
-    this.sessionId = this.generateSessionId();
+    
+    this.session = sessionId();
+    this.identity = new IdentityManager(this.config.storagePath, this.config.identity);
+    this.memory = new MemoryEngine(this.config.storagePath, this.session, this.config.decay);
   }
 
-  /**
-   * Wake up — load identity and relevant memories for a new session.
-   * Call this at the start of every session.
-   */
-  async wake(): Promise<WakeContext> {
-    // TODO: Implement
-    // 1. Load identity files
-    // 2. Load recent memories (last 24-48h)
-    // 3. Load relevant opinions
-    // 4. Load relationship context
-    // 5. Return context optimized for token budget
-    throw new Error('Not yet implemented — coming soon!');
-  }
+  // ============ BOOT SEQUENCE ============
+  // Order matters. This is enforced, not suggested.
+  // soul.md -> now.md -> daily log -> yesterday -> semantic search
 
   /**
-   * Remember — log an event, conversation, or insight.
-   * Automatically scores importance and tags.
+   * Boot — the cold-start sequence.
+   * Returns a WakeContext with everything the agent needs to start working.
+   * Target: productive state in <60 seconds.
    */
-  async remember(memory: Partial<Memory>): Promise<Memory> {
-    // TODO: Implement
-    // 1. Generate unique ID
-    // 2. Score importance if not provided
-    // 3. Auto-tag if not provided
-    // 4. Write to daily memory file
-    // 5. If critical, also write to long-term
-    throw new Error('Not yet implemented — coming soon!');
+  async boot(): Promise<WakeContext> {
+    const startTime = Date.now();
+
+    // Step 1: Load identity (SOUL.md + identity.json) — ~5s
+    const identityData = await this.identity.load();
+    const soul = this.identity.getSoul();
+
+    // If first boot ever, initialize SOUL.md
+    if (!soul) {
+      await this.identity.initSoul(this.config.name);
+    }
+
+    // Step 2: Read lifeboat (NOW.md) — ~3s
+    const lifeboat = await this.memory.readLifeboat();
+    let checkpoint: Checkpoint | null = null;
+    if (lifeboat) {
+      // Parse lifeboat into checkpoint (simplified — it's markdown)
+      checkpoint = {
+        activeTask: this.extractSection(lifeboat, 'Active Task') || 'No active task',
+        status: (this.extractSection(lifeboat, 'Status') as Checkpoint['status']) || 'paused',
+        resumePoint: this.extractSection(lifeboat, 'Resume Point') || 'Start fresh',
+        updatedAt: now(),
+      };
+    }
+
+    // Step 3: Load today's daily log — ~10s
+    const todayLog = await this.memory.readDailyLog();
+
+    // Step 4: Load yesterday's log — ~5s
+    const yesterdayLog = await this.memory.readYesterdayLog();
+
+    // Step 5: Load recent memories from index
+    const recentMemories = await this.memory.getRecentMemories(48);
+
+    // Step 6: Load opinions
+    const opinions = await this.memory.getOpinions();
+
+    // Step 7: Read long-term memory
+    const longTermMemory = await this.memory.readLongTerm();
+
+    this.bootTime = Date.now() - startTime;
+    this.booted = true;
+
+    // Build wake context
+    const context: WakeContext = {
+      identity: identityData,
+      lifeboat: checkpoint,
+      recentMemories: recentMemories.slice(0, 50), // cap at 50 most recent
+      relevantOpinions: opinions,
+      relationships: [], // TODO: relationship engine
+      sessionId: this.session,
+      lastSessionSummary: todayLog || yesterdayLog || undefined,
+      tokenBudget: 4000, // reasonable default
+      tokensUsed: this.estimateTokens(identityData, recentMemories, opinions),
+    };
+
+    // Log boot event
+    await this.memory.remember({
+      content: `Session started. Boot time: ${this.bootTime}ms. Loaded ${recentMemories.length} recent memories, ${opinions.length} opinions.`,
+      type: 'event',
+      importance: 'low',
+      tags: ['system', 'boot'],
+    });
+
+    return context;
   }
 
+  // ============ REMEMBER ============
+
   /**
-   * Opine — record an opinion or preference.
-   * Tracks how opinions evolve over time.
+   * Remember — store a memory immediately.
+   * "Write during, not after" — core principle.
    */
-  async opine(opinion: Partial<Opinion>): Promise<Opinion> {
-    // TODO: Implement
-    // 1. Check if opinion on this topic already exists
-    // 2. If exists, archive old opinion and update
-    // 3. If new, create fresh entry
-    // 4. Track confidence level
-    throw new Error('Not yet implemented — coming soon!');
+  async remember(input: {
+    content: string;
+    type?: Memory['type'];
+    importance?: Memory['importance'];
+    tags?: string[];
+    emotionalWeight?: number;
+  }): Promise<Memory> {
+    this.ensureBooted();
+    this.memoriesThisSession++;
+    return this.memory.remember(input);
   }
+
+  // ============ RECALL ============
 
   /**
    * Recall — search memories by semantic meaning.
-   * Returns the most relevant memories for a given query.
    */
   async recall(query: string, limit?: number): Promise<Memory[]> {
-    // TODO: Implement
-    // 1. Load all memories
-    // 2. Semantic search against query
-    // 3. Rank by relevance + importance + recency
-    // 4. Return top N results
-    throw new Error('Not yet implemented — coming soon!');
+    this.ensureBooted();
+    return this.memory.recall(query, limit);
   }
+
+  // ============ CHECKPOINT (Lifeboat) ============
 
   /**
-   * Sleep — end the current session.
-   * Auto-consolidates memories, generates summary, promotes important items.
+   * Checkpoint — update NOW.md.
+   * Call every 2 significant actions.
    */
-  async sleep(): Promise<SessionSummary> {
-    // TODO: Implement
-    // 1. Generate session summary
-    // 2. Review all memories from this session
-    // 3. Promote high-importance items to long-term
-    // 4. Run decay on old low-importance memories
-    // 5. Update identity if meaningful growth occurred
-    throw new Error('Not yet implemented — coming soon!');
+  async checkpoint(input: {
+    activeTask: string;
+    status: Checkpoint['status'];
+    resumePoint: string;
+    openThreads?: string[];
+    keyContext?: string[];
+  }): Promise<void> {
+    this.ensureBooted();
+    await this.memory.updateLifeboat({
+      ...input,
+      updatedAt: now(),
+    });
   }
 
-  private generateSessionId(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  // ============ FLUSH (Pre-compaction) ============
+
+  /**
+   * Flush — emergency save before context compression.
+   * Call this when you detect context window pressure.
+   */
+  async flush(context?: {
+    activeTask?: string;
+    criticalState?: string;
+    unsavedMemories?: string[];
+  }): Promise<void> {
+    await this.memory.emergencyFlush(context || {});
+  }
+
+  // ============ OPINE ============
+
+  /**
+   * Opine — record or update an opinion.
+   * Tracks how your views evolve over time.
+   */
+  async opine(topic: string, opinion: string, confidence: number): Promise<Opinion> {
+    this.ensureBooted();
+    return this.memory.opine({ topic, opinion, confidence });
+  }
+
+  // ============ REFLECT (End of session) ============
+
+  /**
+   * Reflect — end-of-session consolidation.
+   * Reviews memories, runs decay, promotes important items.
+   */
+  async reflect(): Promise<SessionSummary> {
+    this.ensureBooted();
+    
+    const startTime = Date.now();
+
+    // Run memory decay
+    const decayResult = await this.memory.runDecay();
+
+    // Get all opinions for summary
+    const opinions = await this.memory.getOpinions();
+
+    // Generate session summary
+    const summary: SessionSummary = {
+      sessionId: this.session,
+      startedAt: new Date(Date.now() - (Date.now() - this.bootTime)).toISOString(),
+      endedAt: now(),
+      summary: `Session ${this.session}: ${this.memoriesThisSession} memories created. Decay: ${decayResult.decayed} removed, ${decayResult.archived} archived, ${decayResult.kept} kept.`,
+      memoriesCreated: this.memoriesThisSession,
+      memoriesPromoted: 0, // TODO: track promotions
+      memoriesDecayed: decayResult.decayed,
+      opinionsFormed: opinions.length,
+      opinionsChanged: opinions.filter(o => o.previousOpinions.length > 0).length,
+      importantEvents: [],
+      lessonsLearned: [],
+    };
+
+    // Write summary to daily log
+    const summaryMd = `\n---\n## Session Summary (${now()})\n${summary.summary}\n---\n`;
+    const dailyPath = `memory/${dateKey()}.md`;
+    await this.memory.remember({
+      content: summary.summary,
+      type: 'event',
+      importance: 'low',
+      tags: ['system', 'session-summary'],
+    });
+
+    // Clear lifeboat (session ended normally)
+    await this.memory.updateLifeboat({
+      activeTask: 'No active task — session ended normally',
+      status: 'done',
+      resumePoint: 'Start fresh next session',
+      updatedAt: now(),
+    });
+
+    return summary;
+  }
+
+  // ============ ACCESSORS ============
+
+  /** Get current session ID */
+  getSessionId(): string {
+    return this.session;
+  }
+
+  /** Get boot time in ms */
+  getBootTime(): number {
+    return this.bootTime;
+  }
+
+  /** Get the identity manager for direct access */
+  getIdentity(): IdentityManager {
+    return this.identity;
+  }
+
+  /** Get the memory engine for direct access */
+  getMemory(): MemoryEngine {
+    return this.memory;
+  }
+
+  // ============ INTERNAL ============
+
+  private ensureBooted(): void {
+    if (!this.booted) {
+      throw new Error('[anima] Not booted. Call anima.boot() first.');
+    }
+  }
+
+  private extractSection(markdown: string, heading: string): string | null {
+    const regex = new RegExp(`## ${heading}\\n([\\s\\S]*?)(?=\\n##|$)`, 'i');
+    const match = markdown.match(regex);
+    return match ? match[1].trim() : null;
+  }
+
+  private estimateTokens(identity: any, memories: Memory[], opinions: Opinion[]): number {
+    // Rough estimate: 1 token ≈ 4 chars
+    const identityTokens = JSON.stringify(identity).length / 4;
+    const memoryTokens = memories.reduce((sum, m) => sum + m.content.length / 4, 0);
+    const opinionTokens = opinions.reduce((sum, o) => sum + (o.current.length + o.topic.length) / 4, 0);
+    return Math.ceil(identityTokens + memoryTokens + opinionTokens);
   }
 }
