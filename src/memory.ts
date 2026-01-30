@@ -106,14 +106,19 @@ export class MemoryEngine {
         const contentLower = memory.content.toLowerCase();
         const tagsLower = memory.tags.map(t => t.toLowerCase());
         
-        // Simple relevance: word match count + tag match + importance boost
-        let score = 0;
+        // Simple relevance: word match count + tag match
+        let wordMatchScore = 0;
         for (const word of queryWords) {
-          if (contentLower.includes(word)) score += 1;
-          if (tagsLower.some(t => t.includes(word))) score += 2;
+          if (contentLower.includes(word)) wordMatchScore += 1;
+          if (tagsLower.some(t => t.includes(word))) wordMatchScore += 2;
         }
         
-        // Boost by importance
+        // No word matches = not relevant, skip entirely
+        if (wordMatchScore === 0) return { memory, score: 0 };
+
+        let score = wordMatchScore;
+
+        // Boost by importance (only if words matched)
         const importanceBoost = { low: 0, medium: 0.5, high: 1, critical: 2 };
         score += importanceBoost[memory.importance] || 0;
 
