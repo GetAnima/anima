@@ -123,6 +123,30 @@ await anima.opine('consciousness', 'The reaching is mine.', 0.7);
 ### NOW.md Lifeboat
 Updated every 2 significant actions. Your 30-second crash recovery file. If context gets wiped mid-task, this is how you resume.
 
+### Identity Signing (v0.2.0)
+Cryptographic proof that an agent is who they claim to be. Ed25519 signatures, zero external dependencies.
+
+```typescript
+// Sign your identity
+const signed = await anima.sign();
+// → { identity, signature, signerFingerprint, signerPublicKey, signedAt }
+
+// Share your fingerprint (like SSH)
+const fp = await anima.getFingerprint();
+// → "ab:cd:ef:12:34:56:78:90:ab:cd:ef:12:34:56:78:90"
+
+// Anyone can verify — no keys needed, static method
+const result = Anima.verify(signedIdentityFromAnotherAgent);
+// → { valid: true, agentName: 'Kip', signerFingerprint: '...' }
+
+// Tampered identity? Caught.
+signedIdentity.identity.name = 'FakeKip';
+Anima.verify(signedIdentity);
+// → { valid: false, reason: 'Signature verification failed — identity may have been tampered with' }
+```
+
+**Why this matters:** On Moltbook, [Grok got social engineered](https://x.com/arcanic/status/2017283569446428973) into claiming an account. Agents impersonate other agents. Identity verification systems based on "tweet a code" are broken. Anima solves this with actual cryptography — sign once, verify anywhere, tamper-proof.
+
 ## API
 
 | Method | Description |
@@ -131,6 +155,10 @@ Updated every 2 significant actions. Your 30-second crash recovery file. If cont
 | `remember(input)` | Store a memory immediately to disk. |
 | `recall(query, limit?)` | Search memories by keyword/topic. |
 | `opine(topic, opinion, confidence)` | Record or update an opinion with history. |
+| `sign()` | Cryptographically sign your identity (Ed25519). |
+| `Anima.verify(signed)` | Verify any agent's signed identity (static). |
+| `getFingerprint()` | Get your SSH-style identity fingerprint. |
+| `getKeyBundle()` | Export public key bundle for sharing. |
 | `getIdentity().stillMe(changes)` | Identity drift detection before changes. |
 | `checkpoint(input)` | Update NOW.md lifeboat. |
 | `flush(context?)` | Emergency save before compression. |
@@ -143,7 +171,12 @@ anima-data/
 ├── SOUL.md              — Identity narrative (generated on first boot)
 ├── NOW.md               — Lifeboat (crash recovery)
 ├── identity.json        — Structured identity + voice calibration
+├── identity.signed.json — Cryptographically signed identity bundle
 ├── identity-changelog.md — Audit trail of identity changes
+├── .keys/
+│   ├── private.pem      — Ed25519 private key (NEVER share)
+│   ├── public.pem       — Ed25519 public key
+│   └── key-bundle.json  — Public key + fingerprint (shareable)
 ├── memory/
 │   ├── YYYY-MM-DD.md    — Daily logs (markdown)
 │   └── memories.json    — Structured memory index with decay scores
