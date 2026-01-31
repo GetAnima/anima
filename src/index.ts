@@ -11,6 +11,7 @@ export { Anima } from './anima';
 export { MemoryEngine } from './memory';
 export { IdentityManager } from './identity';
 export { ReflectionEngine } from './reflection';
+export { SigningEngine } from './signing';
 
 export type {
   AnimaConfig,
@@ -31,3 +32,9 @@ export type {
   AnimaEvent,
   AutoSaveConfig,
 } from './types';
+
+export type {
+  KeyBundle,
+  SignedIdentity,
+  VerificationResult,
+} from './signing';

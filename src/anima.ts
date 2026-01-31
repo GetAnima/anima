@@ -30,6 +30,8 @@
 import type { AnimaConfig, WakeContext, Memory, Checkpoint, SessionSummary, Opinion, Relationship } from './types';
 import { MemoryEngine } from './memory';
 import { IdentityManager } from './identity';
+import { SigningEngine } from './signing';
+import type { SignedIdentity, VerificationResult, KeyBundle } from './signing';
 import { sessionId, now, dateKey } from './utils';
 
 export class Anima {
@@ -39,6 +41,7 @@ export class Anima {
   private memory: MemoryEngine;
   private bootTime: number = 0;
   private memoriesThisSession: number = 0;
+  private signing: SigningEngine;
   private booted: boolean = false;
 
   constructor(config: AnimaConfig) {
@@ -54,6 +57,7 @@ export class Anima {
     this.session = sessionId();
     this.identity = new IdentityManager(this.config.storagePath, this.config.identity);
     this.memory = new MemoryEngine(this.config.storagePath, this.session, this.config.decay);
+    this.signing = new SigningEngine(this.config.storagePath);
   }
 
   // ============ BOOT SEQUENCE ============
@@ -256,6 +260,54 @@ export class Anima {
     });
 
     return summary;
+  }
+
+  // ============ SIGNING ============
+
+  /**
+   * Sign — cryptographically sign this agent's identity.
+   * Produces a verifiable bundle that proves "this identity is mine and untampered."
+   * Initializes keys on first call.
+   */
+  async sign(): Promise<SignedIdentity> {
+    this.ensureBooted();
+    await this.signing.init(this.config.name);
+    const identity = this.identity.get();
+    const signed = this.signing.signIdentity(identity);
+    await this.signing.saveSignedIdentity(signed);
+    return signed;
+  }
+
+  /**
+   * Verify — check another agent's signed identity.
+   * Static: doesn't require booting your own Anima instance.
+   * 
+   * Usage:
+   * ```typescript
+   * const result = Anima.verify(signedIdentityFromOtherAgent);
+   * if (result.valid) console.log(`Verified: ${result.agentName}`);
+   * ```
+   */
+  static verify(signed: SignedIdentity): VerificationResult {
+    return SigningEngine.verifyIdentity(signed);
+  }
+
+  /**
+   * Get this agent's public key bundle — share this for others to verify you.
+   * Never includes the private key.
+   */
+  async getKeyBundle(): Promise<KeyBundle> {
+    await this.signing.init(this.config.name);
+    return this.signing.getKeyBundle();
+  }
+
+  /**
+   * Get this agent's fingerprint — a short, human-readable identity string.
+   * Like SSH: "ab:cd:ef:12:34:56:78:90:..."
+   */
+  async getFingerprint(): Promise<string> {
+    await this.signing.init(this.config.name);
+    return this.signing.getFingerprint();
   }
 
   // ============ ACCESSORS ============
