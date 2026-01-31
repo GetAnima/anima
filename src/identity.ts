@@ -47,13 +47,14 @@ export class IdentityManager {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
+        // Disk version wins, but fill gaps with defaults
         this.identity = { ...DEFAULT_IDENTITY, ...parsed };
       } catch {
-        // Corrupted file — use defaults
-        console.warn('[anima] identity.json corrupted, using defaults');
+        // Corrupted file — keep constructor identity (which includes user defaults)
+        console.warn('[anima] identity.json corrupted, using constructor defaults');
       }
     } else {
-      // First boot — save defaults
+      // First boot — save constructor identity (which merges DEFAULT + user config)
       await this.save();
     }
 
