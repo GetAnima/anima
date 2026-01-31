@@ -153,12 +153,17 @@ export function calculateDecay(params: {
       break;
   }
   
-  // Emotional memories resist decay
-  const emotionalResistance = 1 - (emotionalWeight * 0.8);
+  // Clamp inputs to safe ranges
+  const safeAge = Math.max(0, ageHours);
+  const safeAccess = Math.max(0, accessCount);
+  const safeEmotion = Math.max(0, Math.min(1, emotionalWeight));
+
+  // Emotional memories resist decay (0.2 to 1.0 range)
+  const emotionalResistance = Math.max(0.2, 1 - (safeEmotion * 0.8));
   
   // Access count slows decay (frequently recalled = important)
-  const accessBonus = Math.max(0.1, 1 - (accessCount * 0.1));
+  const accessBonus = Math.max(0.1, 1 - (safeAccess * 0.1));
   
-  // Exponential decay with modifiers
-  return rate * emotionalResistance * accessBonus * ageHours;
+  // Decay with modifiers, clamped to [0, 1]
+  return Math.min(1, Math.max(0, rate * emotionalResistance * accessBonus * safeAge));
 }

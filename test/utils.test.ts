@@ -107,6 +107,39 @@ describe('calculateDecay', () => {
 
     expect(recalled).toBeLessThan(fresh);
   });
+
+  it('returns 0 for zero age (brand new memory)', () => {
+    const rates = { procedural: 0.0003, semantic: 0.001, episodic: 0.003 };
+    const result = calculateDecay({ type: 'event', ageHours: 0, accessCount: 0, emotionalWeight: 0, decayRates: rates });
+    expect(result).toBe(0);
+  });
+
+  it('clamps negative ageHours to 0 (clock skew)', () => {
+    const rates = { procedural: 0.0003, semantic: 0.001, episodic: 0.003 };
+    const result = calculateDecay({ type: 'event', ageHours: -5, accessCount: 0, emotionalWeight: 0, decayRates: rates });
+    expect(result).toBe(0);
+    expect(result).toBeGreaterThanOrEqual(0);
+  });
+
+  it('clamps emotionalWeight above 1 to 1', () => {
+    const rates = { procedural: 0.0003, semantic: 0.001, episodic: 0.003 };
+    const result = calculateDecay({ type: 'event', ageHours: 100, accessCount: 0, emotionalWeight: 5, decayRates: rates });
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(result).toBeLessThanOrEqual(1);
+  });
+
+  it('never exceeds 1 even with extreme age', () => {
+    const rates = { procedural: 0.0003, semantic: 0.001, episodic: 0.003 };
+    const result = calculateDecay({ type: 'conversation', ageHours: 100000, accessCount: 0, emotionalWeight: 0, decayRates: rates });
+    expect(result).toBeLessThanOrEqual(1);
+  });
+
+  it('handles negative accessCount gracefully', () => {
+    const rates = { procedural: 0.0003, semantic: 0.001, episodic: 0.003 };
+    const result = calculateDecay({ type: 'event', ageHours: 100, accessCount: -3, emotionalWeight: 0, decayRates: rates });
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(result).toBeLessThanOrEqual(1);
+  });
 });
 
 describe('parseFrontmatter', () => {
