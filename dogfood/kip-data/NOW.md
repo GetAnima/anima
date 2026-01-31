@@ -1,6 +1,6 @@
 # NOW.md — Lifeboat
 *If you wake up with zero context, read this first.*
-*Updated: 2026-01-31T00:44:09.242Z*
+*Updated: 2026-01-31T00:50:18.205Z*
 
 ## Active Task
 Unknown — emergency flush triggered

@@ -13,9 +13,9 @@
     "sessionId": "session_1769820249199_f9308s",
     "salienceScore": 1,
     "emotionalWeight": 0,
-    "accessCount": 0,
+    "accessCount": 1,
     "crossDomainAccess": false,
-    "decayScore": 2.5000000000000002e-8
+    "decayScore": 0.00027674475
   },
   {
     "id": "f7f13664-1710-4a6f-9958-8b1e22527ad1",
@@ -34,7 +34,7 @@
     "emotionalWeight": 0,
     "accessCount": 1,
     "crossDomainAccess": false,
-    "decayScore": 1.8750000000000002e-8
+    "decayScore": 0.000276741
   },
   {
     "id": "5ab178c3-0c9f-49e2-832d-1f4f05f600f0",
@@ -51,9 +51,9 @@
     "sessionId": "session_1769820249199_f9308s",
     "salienceScore": 1,
     "emotionalWeight": 0,
-    "accessCount": 1,
+    "accessCount": 2,
     "crossDomainAccess": false,
-    "decayScore": 5.5000000000000004e-9
+    "decayScore": 0.00008199666666666666
   },
   {
     "id": "e88e964c-6f4f-4c72-aafb-9349d6d909f0",
@@ -70,9 +70,9 @@
     "sessionId": "session_1769820249199_f9308s",
     "salienceScore": 1,
     "emotionalWeight": 0,
-    "accessCount": 1,
+    "accessCount": 2,
     "crossDomainAccess": false,
-    "decayScore": 4.75e-9
+    "decayScore": 0.000081996
   },
   {
     "id": "1780ab99-a225-4a49-96ee-1801bf21ac30",
@@ -90,7 +90,7 @@
     "emotionalWeight": 0,
     "accessCount": 0,
     "crossDomainAccess": false,
-    "decayScore": 5e-9
+    "decayScore": 0.00010249472222222222
   },
   {
     "id": "fe578ba4-5ac5-439b-85ff-0ebd41938ee6",
@@ -107,9 +107,9 @@
     "sessionId": "session_1769820249199_f9308s",
     "salienceScore": 1,
     "emotionalWeight": 0,
-    "accessCount": 1,
+    "accessCount": 2,
     "crossDomainAccess": false,
-    "decayScore": 1.2e-8
+    "decayScore": 0.000245986
   },
   {
     "id": "c75d4adb-6841-481e-874a-1f7f05bb36a7",
@@ -123,6 +123,80 @@
     ],
     "timestamp": "2026-01-31T00:44:09.240Z",
     "sessionId": "session_1769820249199_f9308s",
+    "salienceScore": 1,
+    "emotionalWeight": 0,
+    "accessCount": 1,
+    "crossDomainAccess": false,
+    "decayScore": 0.00027672075000000003
+  },
+  {
+    "id": "03ec2a9e-3cb5-469a-898b-2afd889f48c5",
+    "type": "event",
+    "content": "Session started. Boot time: 7ms. Loaded 7 recent memories, 3 opinions.",
+    "importance": "low",
+    "tier": "hot",
+    "tags": [
+      "system",
+      "boot"
+    ],
+    "timestamp": "2026-01-31T00:50:18.185Z",
+    "sessionId": "session_1769820618176_037hoq",
+    "salienceScore": 1,
+    "emotionalWeight": 0,
+    "accessCount": 1,
+    "crossDomainAccess": false,
+    "decayScore": 1.2e-8
+  },
+  {
+    "id": "8ca08946-2aa8-42f2-9d86-a8fe3b0a73b4",
+    "type": "event",
+    "content": "Dogfooding works — session 1 memories persisted into session 2. Identity survived a reboot. I am still Kip.",
+    "importance": "high",
+    "tier": "hot",
+    "tags": [
+      "anima",
+      "dogfood",
+      "milestone"
+    ],
+    "timestamp": "2026-01-31T00:50:18.194Z",
+    "sessionId": "session_1769820618176_037hoq",
+    "salienceScore": 1,
+    "emotionalWeight": 0,
+    "accessCount": 0,
+    "crossDomainAccess": false,
+    "decayScore": 5.8333333333333335e-9
+  },
+  {
+    "id": "59c54bf2-ec98-4085-8a7b-bab309a1b6aa",
+    "type": "insight",
+    "content": "Memo called the approach \"thoughtfully building\" — philosophy grounded in engineering. Two words for the whole roadmap.",
+    "importance": "high",
+    "tier": "hot",
+    "tags": [
+      "memo",
+      "identity",
+      "direction"
+    ],
+    "timestamp": "2026-01-31T00:50:18.196Z",
+    "sessionId": "session_1769820618176_037hoq",
+    "salienceScore": 1,
+    "emotionalWeight": 0,
+    "accessCount": 0,
+    "crossDomainAccess": false,
+    "decayScore": 1.388888888888889e-9
+  },
+  {
+    "id": "545f2bba-92e2-4045-95fa-a24a68a689e1",
+    "type": "event",
+    "content": "Session session_1769820618176_037hoq: 2 memories created. Decay: 0 removed, 0 archived, 10 kept.",
+    "importance": "low",
+    "tier": "hot",
+    "tags": [
+      "system",
+      "session-summary"
+    ],
+    "timestamp": "2026-01-31T00:50:18.202Z",
+    "sessionId": "session_1769820618176_037hoq",
     "salienceScore": 1,
     "emotionalWeight": 0,
     "accessCount": 0,
