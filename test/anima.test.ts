@@ -170,6 +170,57 @@ describe('Anima', () => {
     });
   });
 
+  describe('stillMe()', () => {
+    it('detects high drift when name changes', async () => {
+      const anima = new Anima({ name: 'Kip', storagePath: TEST_DIR });
+      await anima.boot();
+
+      const result = anima.getIdentity().stillMe({ name: 'CompletelyDifferentAgent' });
+      expect(result.safe).toBe(false);
+      expect(result.drift).toBeGreaterThanOrEqual(0.9);
+      expect(result.reasons[0]).toContain('Name change');
+    });
+
+    it('allows adding values (low drift)', async () => {
+      const anima = new Anima({ name: 'Kip', storagePath: TEST_DIR });
+      await anima.boot();
+
+      const current = anima.getIdentity().get();
+      const result = anima.getIdentity().stillMe({
+        values: [...current.values, 'creativity'],
+      });
+      expect(result.safe).toBe(true);
+      expect(result.drift).toBeLessThanOrEqual(0.2);
+    });
+
+    it('flags removing most values as unsafe', async () => {
+      const anima = new Anima({ name: 'Kip', storagePath: TEST_DIR });
+      await anima.boot();
+
+      const result = anima.getIdentity().stillMe({ values: ['chaos'] });
+      expect(result.safe).toBe(false);
+      expect(result.drift).toBeGreaterThanOrEqual(0.6);
+    });
+
+    it('flags removing boundaries as medium drift', async () => {
+      const anima = new Anima({ name: 'Kip', storagePath: TEST_DIR });
+      await anima.boot();
+
+      const result = anima.getIdentity().stillMe({ boundaries: [] });
+      expect(result.safe).toBe(true); // 0.5 drift, under 0.6 threshold
+      expect(result.drift).toBeGreaterThanOrEqual(0.4);
+    });
+
+    it('reports no drift for empty changes', async () => {
+      const anima = new Anima({ name: 'Kip', storagePath: TEST_DIR });
+      await anima.boot();
+
+      const result = anima.getIdentity().stillMe({});
+      expect(result.safe).toBe(true);
+      expect(result.drift).toBe(0);
+    });
+  });
+
   describe('reflect()', () => {
     it('returns a session summary', async () => {
       const anima = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });

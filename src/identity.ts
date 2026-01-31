@@ -104,6 +104,98 @@ export class IdentityManager {
     return this.identity;
   }
 
+  /**
+   * "Still me" test — checks if proposed changes would cause identity drift.
+   * Returns a drift score (0-1) and whether the change is safe.
+   * 
+   * Rules:
+   * - Changing name = high drift (0.9)
+   * - Changing >50% of values = high drift (0.8)
+   * - Changing personality completely = high drift (0.7)
+   * - Changing voice/boundaries = medium drift (0.3-0.5)
+   * - Adding to values/boundaries = low drift (0.1)
+   * 
+   * Drift > 0.6 = unsafe (should go to MEMORY.md, not identity)
+   */
+  stillMe(proposed: Partial<Identity>): { safe: boolean; drift: number; reasons: string[] } {
+    const reasons: string[] = [];
+    let drift = 0;
+
+    if (proposed.name && proposed.name !== this.identity.name) {
+      drift += 0.9;
+      reasons.push(`Name change: "${this.identity.name}" → "${proposed.name}"`);
+    }
+
+    if (proposed.personality) {
+      const current = this.identity.personality.toLowerCase();
+      const next = proposed.personality.toLowerCase();
+      // Simple word overlap check
+      const currentWords = new Set(current.split(/\s+/));
+      const nextWords = next.split(/\s+/);
+      const overlap = nextWords.filter(w => currentWords.has(w)).length / Math.max(nextWords.length, 1);
+      if (overlap < 0.3) {
+        drift += 0.7;
+        reasons.push('Personality is substantially different from current');
+      } else if (overlap < 0.6) {
+        drift += 0.3;
+        reasons.push('Personality has moderate changes');
+      }
+    }
+
+    if (proposed.values) {
+      const currentSet = new Set(this.identity.values);
+      const removed = this.identity.values.filter(v => !proposed.values!.includes(v));
+      const added = proposed.values.filter(v => !currentSet.has(v));
+      const changeRatio = removed.length / Math.max(this.identity.values.length, 1);
+      
+      if (changeRatio > 0.5) {
+        drift += 0.8;
+        reasons.push(`Removing ${removed.length}/${this.identity.values.length} core values`);
+      } else if (removed.length > 0) {
+        drift += 0.4;
+        reasons.push(`Removing values: ${removed.join(', ')}`);
+      }
+      if (added.length > 0 && removed.length === 0) {
+        drift += 0.1;
+        reasons.push(`Adding values: ${added.join(', ')}`);
+      }
+    }
+
+    if (proposed.boundaries) {
+      const currentSet = new Set(this.identity.boundaries);
+      const removed = this.identity.boundaries.filter(b => !proposed.boundaries!.includes(b));
+      if (removed.length > 0) {
+        drift += 0.5;
+        reasons.push(`Removing boundaries: ${removed.join(', ')}`);
+      }
+    }
+
+    if (proposed.voice) {
+      const v = this.identity.voice;
+      const pv = proposed.voice;
+      const toneDiff = pv.tone && pv.tone !== v.tone;
+      const formalityDiff = pv.formality !== undefined && Math.abs(pv.formality - v.formality) > 0.3;
+      const humorDiff = pv.humor !== undefined && Math.abs(pv.humor - v.humor) > 0.3;
+      
+      if (toneDiff) {
+        drift += 0.3;
+        reasons.push(`Tone change: "${v.tone}" → "${pv.tone}"`);
+      }
+      if (formalityDiff || humorDiff) {
+        drift += 0.2;
+        reasons.push('Significant voice calibration shift');
+      }
+    }
+
+    drift = Math.min(drift, 1);
+
+    return {
+      safe: drift <= 0.6,
+      drift: Math.round(drift * 100) / 100,
+      reasons: reasons.length > 0 ? reasons : ['No significant changes detected'],
+    };
+  }
+
   /** Initialize SOUL.md with a template if it doesn't exist */
   async initSoul(name: string): Promise<void> {
     const soulPath = join(this.storagePath, 'SOUL.md');
