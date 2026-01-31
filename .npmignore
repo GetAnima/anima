@@ -1,0 +1,15 @@
+src/
+test/
+dogfood/
+examples/
+landing/
+*.ts
+!dist/**/*.d.ts
+tsconfig.json
+.gitignore
+moltbook-*.ps1
+moltbook-*.md
+LANDING-PAGE-INSPO.md
+ROADMAP-KIP.md
+READING-LIST.md
+memory/
