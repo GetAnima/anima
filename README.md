@@ -1,5 +1,10 @@
 # 🦝 Anima
 
+[![npm version](https://img.shields.io/npm/v/@getanima/core)](https://www.npmjs.com/package/@getanima/core)
+[![tests](https://img.shields.io/badge/tests-46%20passing-brightgreen)](https://github.com/GetAnima/anima)
+[![zero deps](https://img.shields.io/badge/dependencies-0-blue)](https://www.npmjs.com/package/@getanima/core)
+[![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+
 **Identity and memory infrastructure for AI agents.**
 
 Give your agent a soul — not just a system prompt.
