@@ -204,6 +204,93 @@ ${checkpoint.emergency ? '⚠️ **EMERGENCY FLAG SET** — Something critical w
     await appendFileSafe(join(this.storagePath, 'MEMORY.md'), '\n' + content + '\n');
   }
 
+  // ============ CURATION ============
+
+  /**
+   * Curate — review raw memories and distill what matters into MEMORY.md.
+   * 
+   * This is the missing piece most agents skip. Storage is easy. Retrieval is solved.
+   * But without periodic curation, you either drown in noise or lose everything.
+   * 
+   * Call this periodically (e.g., during heartbeats, daily reflection).
+   * 
+   * Strategy:
+   * 1. Scan memories from the last N hours
+   * 2. Filter for high-salience, high-importance items
+   * 3. Deduplicate against existing long-term memory
+   * 4. Append curated insights to MEMORY.md
+   * 5. Return what was curated (so agents can review/edit)
+   */
+  async curate(options?: {
+    hoursBack?: number;
+    minImportance?: ImportanceLevel;
+    minSalience?: number;
+    dryRun?: boolean;
+  }): Promise<{ curated: Memory[]; written: boolean }> {
+    const {
+      hoursBack = 48,
+      minImportance = 'medium',
+      minSalience = 0.5,
+      dryRun = false,
+    } = options || {};
+
+    await this.loadIndex();
+
+    const importanceRank: Record<ImportanceLevel, number> = {
+      low: 0,
+      medium: 1,
+      high: 2,
+      critical: 3,
+    };
+
+    const cutoff = Date.now() - (hoursBack * 60 * 60 * 1000);
+
+    // Step 1: Filter memories worth curating
+    const candidates = this.memories.filter(m => {
+      const age = new Date(m.timestamp).getTime();
+      if (age < cutoff) return false;
+      if (importanceRank[m.importance] < importanceRank[minImportance]) return false;
+      if ((m.salienceScore ?? 0.5) < minSalience) return false;
+      // Skip system/boot events
+      if (m.tags?.includes('system') || m.tags?.includes('boot')) return false;
+      return true;
+    });
+
+    if (candidates.length === 0) {
+      return { curated: [], written: false };
+    }
+
+    // Step 2: Deduplicate against existing long-term memory
+    const existing = await this.readLongTerm();
+    const curated = existing
+      ? candidates.filter(m => !existing.includes(m.content.slice(0, 50)))
+      : candidates;
+
+    if (curated.length === 0 || dryRun) {
+      return { curated, written: false };
+    }
+
+    // Step 3: Format and write to MEMORY.md
+    const header = `\n## Curated — ${dateKey()}\n`;
+    const entries = curated
+      .sort((a, b) => importanceRank[b.importance] - importanceRank[a.importance])
+      .map(m => {
+        const tags = m.tags?.length ? ` [${m.tags.join(', ')}]` : '';
+        return `- ${m.content}${tags}`;
+      })
+      .join('\n');
+
+    await this.writeLongTerm(header + entries);
+
+    // Mark curated memories so they aren't re-curated
+    for (const m of curated) {
+      m.tags = [...(m.tags || []), 'curated'];
+    }
+    await this.saveIndex();
+
+    return { curated, written: true };
+  }
+
   // ============ MEMORY DECAY ============
 
   /** Run decay on all memories. Call during reflection/sleep. */

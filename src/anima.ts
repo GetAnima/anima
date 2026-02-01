@@ -209,6 +209,32 @@ export class Anima {
     return this.memory.opine({ topic, opinion, confidence });
   }
 
+  // ============ CURATE ============
+
+  /**
+   * Curate — review raw memories and distill what matters into long-term memory.
+   * 
+   * The missing piece between storage and retrieval.
+   * Raw daily logs are your journal. MEMORY.md is your identity.
+   * This method bridges the two.
+   * 
+   * Call periodically (heartbeats, daily, whenever feels right).
+   * 
+   * ```typescript
+   * const result = await anima.curate();
+   * console.log(`Curated ${result.curated.length} memories`);
+   * ```
+   */
+  async curate(options?: {
+    hoursBack?: number;
+    minImportance?: Memory['importance'];
+    minSalience?: number;
+    dryRun?: boolean;
+  }): Promise<{ curated: Memory[]; written: boolean }> {
+    this.ensureBooted();
+    return this.memory.curate(options);
+  }
+
   // ============ REFLECT (End of session) ============
 
   /**
@@ -219,6 +245,9 @@ export class Anima {
     this.ensureBooted();
     
     const startTime = Date.now();
+
+    // Curate before decay — promote important memories to MEMORY.md
+    const curationResult = await this.memory.curate({ hoursBack: 24, minImportance: 'medium' });
 
     // Run memory decay
     const decayResult = await this.memory.runDecay();
