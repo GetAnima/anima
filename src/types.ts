@@ -64,6 +64,8 @@ export interface Memory {
   crossDomainAccess?: boolean;
   /** Decay score — increases over time, modulated by type and access */
   decayScore?: number;
+  /** Floor value — minimum salience that prevents decay below threshold */
+  floor?: number;
 }
 
 export interface DecayConfig {
@@ -157,6 +159,10 @@ export interface WakeContext {
   relevantOpinions: Opinion[];
   relationships: Relationship[];
   sessionId: string;
+  /** Unique instance ID — prevents identity confusion when agent is forked/cloned */
+  instanceId: string;
+  /** Parent instance ID if this is a forked instance */
+  parentInstanceId?: string;
   lastSessionSummary?: string;
   tokenBudget: number;
   /** Estimated tokens used by this context */

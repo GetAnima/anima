@@ -120,6 +120,8 @@ export class Anima {
       relevantOpinions: opinions,
       relationships: [], // TODO: relationship engine
       sessionId: this.session,
+      instanceId: sessionId(), // Unique per boot — prevents identity confusion when forked
+      parentInstanceId: undefined, // Set by caller if this is a forked instance
       lastSessionSummary: todayLog || yesterdayLog || undefined,
       tokenBudget: 4000, // reasonable default
       tokensUsed: this.estimateTokens(identityData, recentMemories, opinions),
