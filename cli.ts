@@ -11,6 +11,8 @@
  *   anima opine             — Record/update an opinion (--topic "..." --opinion "..." --confidence 0.8)
  *   anima curate            — Review memories and promote to long-term
  *   anima status            — Show current state (identity, memory count, opinions count)
+ *   anima wm                — Update working memory L1 cache (--task "..." --actions "a,b,c" --threads "x,y,z")
+ *   anima log               — Log an external action (--action "REPLY" --detail "replied to @SecretCorridor")
  *   anima sign              — Sign identity cryptographically
  *   anima verify <path>     — Verify a signed identity file
  */
@@ -139,6 +141,60 @@ async function main() {
         hasLifeboat: !!lifeboat,
         bootTime: anima.getBootTime(),
       }, null, 2));
+      break;
+    }
+
+    case 'wm': {
+      // Update working memory L1 cache — survives context compaction
+      const wmPath = join(STORAGE_PATH, '..', 'WORKING-MEMORY.md');
+      const task = getFlag(args, '--task') || 'No task specified';
+      const actionsRaw = getFlag(args, '--actions');
+      const threadsRaw = getFlag(args, '--threads');
+      const actions = actionsRaw ? actionsRaw.split(',').map(a => a.trim()) : [];
+      const threads = threadsRaw ? threadsRaw.split(',').map(t => t.trim()) : [];
+      
+      const now = new Date().toLocaleString('en-US', { timeZone: process.env.ANIMA_TZ || 'America/Los_Angeles', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      
+      let content = `# WORKING MEMORY\n*Auto-injected every turn. Update after every significant action. Keep under 200 tokens.*\n*Last updated: ${now}*\n\n## Right Now\n- ${task}\n`;
+      
+      if (actions.length > 0) {
+        content += `\n## Last 5 Actions\n`;
+        actions.slice(0, 5).forEach((a, i) => { content += `${i + 1}. ${a}\n`; });
+      }
+      
+      if (threads.length > 0) {
+        content += `\n## Active Threads\n`;
+        threads.forEach(t => { content += `- ${t}\n`; });
+      }
+      
+      const { writeFileSync } = require('fs');
+      const { mkdirSync } = require('fs');
+      try { writeFileSync(wmPath, content); } catch { mkdirSync(require('path').dirname(wmPath), { recursive: true }); writeFileSync(wmPath, content); }
+      console.log(JSON.stringify({ updated: true, path: wmPath, tokens: Math.ceil(content.length / 4) }));
+      break;
+    }
+
+    case 'log': {
+      // Log an external action to prevent duplicates
+      const logPath = join(STORAGE_PATH, 'action-log.md');
+      const actionType = getFlag(args, '--action') || 'ACTION';
+      const detail = getFlag(args, '--detail') || args.slice(1).join(' ');
+      if (!detail) { console.error('Usage: anima log --action REPLY --detail "replied to @someone"'); process.exit(1); }
+      
+      const time = new Date().toLocaleTimeString('en-US', { timeZone: process.env.ANIMA_TZ || 'America/Los_Angeles', hour12: false, hour: '2-digit', minute: '2-digit' });
+      const dateStr = new Date().toLocaleDateString('en-CA', { timeZone: process.env.ANIMA_TZ || 'America/Los_Angeles' });
+      
+      const { readFileSync, writeFileSync: wfs } = require('fs');
+      let existing = '';
+      try { existing = readFileSync(logPath, 'utf-8'); } catch {}
+      
+      // Check if today's header exists
+      if (!existing.includes(`## ${dateStr}`)) {
+        existing += `\n## ${dateStr}\n`;
+      }
+      existing += `- [${time}] ${actionType}: ${detail}\n`;
+      wfs(logPath, existing);
+      console.log(JSON.stringify({ logged: true, action: actionType, detail }));
       break;
     }
 
