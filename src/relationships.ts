@@ -8,6 +8,7 @@
 
 import type { Relationship } from './types';
 import { uid, now, readFileSafe, writeFileSafe } from './utils';
+import { validateString, validateOptionalString, validateStringArray, validateEnum, validateStoragePath, LIMITS, AnimaValidationError } from './validation';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
 
@@ -18,8 +19,8 @@ export class RelationshipEngine {
   private loaded = false;
 
   constructor(storagePath: string) {
-    this.storagePath = storagePath;
-    this.filePath = join(storagePath, 'relationships', 'relationships.json');
+    this.storagePath = validateStoragePath(storagePath);
+    this.filePath = join(this.storagePath, 'relationships', 'relationships.json');
   }
 
   /** Load relationships from disk. */
@@ -75,32 +76,51 @@ export class RelationshipEngine {
     preferences?: string[];
   }): Promise<Relationship> {
     this.ensureLoaded();
-    const existing = this.find(input.name);
+
+    // Validate inputs
+    const name = validateString(input.name, 'name', { maxLength: LIMITS.MAX_NAME_LENGTH });
+    const type = input.type ? validateEnum(input.type, 'type', ['human', 'agent', 'entity'] as const) : 'human';
+    const context = validateOptionalString(input.context, 'context', LIMITS.MAX_NOTE_LENGTH);
+    const notes = input.notes ? validateStringArray(input.notes, 'notes', { maxItems: LIMITS.MAX_NOTES_PER_RELATIONSHIP, maxItemLength: LIMITS.MAX_NOTE_LENGTH }) : [];
+    const preferences = input.preferences ? validateStringArray(input.preferences, 'preferences', { maxItems: LIMITS.MAX_PREFERENCES, maxItemLength: LIMITS.MAX_TAG_LENGTH }) : [];
+
+    const existing = this.find(name);
     
     if (existing) {
       // Update existing
       existing.lastInteraction = now();
       existing.interactionCount++;
-      if (input.context) existing.context = input.context;
-      if (input.notes) existing.notes.push(...input.notes);
-      if (input.preferences) {
-        existing.preferences = [...new Set([...(existing.preferences || []), ...input.preferences])];
+      if (context) existing.context = context;
+      if (notes.length) {
+        existing.notes.push(...notes);
+        // Enforce max notes
+        if (existing.notes.length > LIMITS.MAX_NOTES_PER_RELATIONSHIP) {
+          existing.notes = existing.notes.slice(-LIMITS.MAX_NOTES_PER_RELATIONSHIP);
+        }
+      }
+      if (preferences.length) {
+        existing.preferences = [...new Set([...(existing.preferences || []), ...preferences])].slice(0, LIMITS.MAX_PREFERENCES);
       }
       await this.save();
       return existing;
     }
 
+    // Enforce max relationships
+    if (this.relationships.length >= LIMITS.MAX_RELATIONSHIPS) {
+      throw new AnimaValidationError('relationships', `maximum of ${LIMITS.MAX_RELATIONSHIPS} relationships reached`);
+    }
+
     // Create new
     const rel: Relationship = {
       id: uid(),
-      name: input.name,
-      type: input.type || 'human',
-      context: input.context || '',
+      name,
+      type,
+      context: context || '',
       interactionCount: 1,
       firstMet: now(),
       lastInteraction: now(),
-      preferences: input.preferences || [],
-      notes: input.notes || [],
+      preferences,
+      notes,
     };
     this.relationships.push(rel);
     await this.save();
@@ -110,11 +130,18 @@ export class RelationshipEngine {
   /** Record an interaction (bumps count + timestamp). */
   async interact(name: string, note?: string): Promise<Relationship | null> {
     this.ensureLoaded();
-    const rel = this.find(name);
+    const validName = validateString(name, 'name', { maxLength: LIMITS.MAX_NAME_LENGTH });
+    if (note !== undefined) validateString(note, 'note', { maxLength: LIMITS.MAX_NOTE_LENGTH, required: false });
+    const rel = this.find(validName);
     if (!rel) return null;
     rel.interactionCount++;
     rel.lastInteraction = now();
-    if (note) rel.notes.push(note);
+    if (note) {
+      rel.notes.push(note);
+      if (rel.notes.length > LIMITS.MAX_NOTES_PER_RELATIONSHIP) {
+        rel.notes = rel.notes.slice(-LIMITS.MAX_NOTES_PER_RELATIONSHIP);
+      }
+    }
     await this.save();
     return rel;
   }
@@ -122,9 +149,14 @@ export class RelationshipEngine {
   /** Add a note to a relationship. */
   async addNote(name: string, note: string): Promise<boolean> {
     this.ensureLoaded();
-    const rel = this.find(name);
+    const validName = validateString(name, 'name', { maxLength: LIMITS.MAX_NAME_LENGTH });
+    const validNote = validateString(note, 'note', { maxLength: LIMITS.MAX_NOTE_LENGTH });
+    const rel = this.find(validName);
     if (!rel) return false;
-    rel.notes.push(note);
+    rel.notes.push(validNote);
+    if (rel.notes.length > LIMITS.MAX_NOTES_PER_RELATIONSHIP) {
+      rel.notes = rel.notes.slice(-LIMITS.MAX_NOTES_PER_RELATIONSHIP);
+    }
     await this.save();
     return true;
   }

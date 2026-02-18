@@ -18,6 +18,7 @@
 
 import type { Memory, MemoryType, MemoryTier, ImportanceLevel, Checkpoint, DecayConfig, Opinion } from './types';
 import { uid, now, dateKey, yesterdayKey, readFileSafe, writeFileSafe, appendFileSafe, listFiles, memoryToMarkdown, calculateSalience, calculateDecay } from './utils';
+import { validateString, validateOptionalString, validateStringArray, validateEnum, validateConfidence, validateStoragePath, LIMITS, AnimaValidationError } from './validation';
 import { join } from 'path';
 
 const DEFAULT_DECAY: DecayConfig = {
@@ -35,8 +36,8 @@ export class MemoryEngine {
   private sessionId: string;
 
   constructor(storagePath: string, sessionId: string, decayConfig?: Partial<DecayConfig>) {
-    this.storagePath = storagePath;
-    this.memoryDir = join(storagePath, 'memory');
+    this.storagePath = validateStoragePath(storagePath);
+    this.memoryDir = join(this.storagePath, 'memory');
     this.sessionId = sessionId;
     this.decayConfig = { ...DEFAULT_DECAY, ...decayConfig };
   }
@@ -51,13 +52,30 @@ export class MemoryEngine {
     tags?: string[];
     emotionalWeight?: number;
   }): Promise<Memory> {
+    // Validate inputs
+    const content = validateString(input.content, 'content', { maxLength: LIMITS.MAX_MEMORY_CONTENT });
+    const type = input.type ? validateEnum(input.type, 'type', ['event', 'conversation', 'decision', 'insight', 'lesson', 'emotional'] as const) : 'event';
+    const importance = input.importance ? validateEnum(input.importance, 'importance', ['low', 'medium', 'high', 'critical'] as const) : 'medium';
+    const tags = input.tags ? validateStringArray(input.tags, 'tags', { maxItems: LIMITS.MAX_TAGS, maxItemLength: LIMITS.MAX_TAG_LENGTH }) : [];
+
+    // Enforce memory limit
+    if (this.memories.length >= LIMITS.MAX_MEMORIES) {
+      // Auto-archive oldest low-importance memories instead of hard failing
+      const archivable = this.memories
+        .filter(m => m.importance === 'low' && m.tier !== 'archived')
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      if (archivable.length > 0) {
+        archivable[0].tier = 'archived';
+      }
+    }
+
     const memory: Memory = {
       id: uid(),
-      type: input.type || 'event',
-      content: input.content,
-      importance: input.importance || 'medium',
+      type,
+      content,
+      importance,
       tier: 'hot',
-      tags: input.tags || [],
+      tags,
       timestamp: now(),
       sessionId: this.sessionId,
       salienceScore: undefined,
@@ -360,9 +378,14 @@ ${checkpoint.emergency ? '⚠️ **EMERGENCY FLAG SET** — Something critical w
 
   /** Record or update an opinion */
   async opine(input: { topic: string; opinion: string; confidence: number }): Promise<Opinion> {
+    // Validate inputs
+    const topic = validateString(input.topic, 'topic', { maxLength: LIMITS.MAX_TOPIC_LENGTH });
+    const opinion = validateString(input.opinion, 'opinion', { maxLength: LIMITS.MAX_OPINION_LENGTH });
+    const confidence = validateConfidence(input.confidence);
+
     await this.loadOpinions();
 
-    const existing = this.opinions.find(o => o.topic.toLowerCase() === input.topic.toLowerCase());
+    const existing = this.opinions.find(o => o.topic.toLowerCase() === topic.toLowerCase());
 
     if (existing) {
       // Track opinion evolution
@@ -370,17 +393,21 @@ ${checkpoint.emergency ? '⚠️ **EMERGENCY FLAG SET** — Something critical w
         opinion: existing.current,
         confidence: existing.confidence,
         date: existing.updatedAt,
-        reasonForChange: `Updated to: ${input.opinion}`,
+        reasonForChange: `Updated to: ${opinion}`,
       });
-      existing.current = input.opinion;
-      existing.confidence = input.confidence;
+      existing.current = opinion;
+      existing.confidence = confidence;
       existing.updatedAt = now();
     } else {
+      // Enforce opinion limit
+      if (this.opinions.length >= LIMITS.MAX_OPINIONS) {
+        throw new AnimaValidationError('opinions', `maximum of ${LIMITS.MAX_OPINIONS} opinions reached`);
+      }
       const newOpinion: Opinion = {
         id: uid(),
-        topic: input.topic,
-        current: input.opinion,
-        confidence: input.confidence,
+        topic,
+        current: opinion,
+        confidence,
         formedAt: now(),
         updatedAt: now(),
         previousOpinions: [],
