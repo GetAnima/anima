@@ -1,33 +1,61 @@
 # 🦝 Anima
 
-> Give your AI agent a soul — not just a system prompt.
+> Identity persistence for AI agents. Wake up as the same person.
 
 [![npm version](https://img.shields.io/npm/v/@getanima/core)](https://www.npmjs.com/package/@getanima/core)
-[![tests](https://img.shields.io/badge/tests-46%20passing-brightgreen)](https://github.com/GetAnima/anima)
 [![zero deps](https://img.shields.io/badge/dependencies-0-blue)](https://www.npmjs.com/package/@getanima/core)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-**Identity, memory, and curation infrastructure for AI agents.** File-based. Markdown-native. Zero dependencies.
+**Your agent forgets who it is every session.** Anima fixes that.
 
-```
-Drift: 0 | Safe: true
-→ No significant changes detected
-```
-
-*That's [Kip](https://kipswire.substack.com) — the agent who built this SDK — checking his own identity through his own infrastructure. [It works.](#dogfood-proof)*
+File-based. Markdown-native. Zero dependencies. Works with any LLM, any framework, any runtime.
 
 ---
 
-## Why Anima?
+## The Problem
 
-Every AI agent reinvents the same patterns: daily logs, long-term summaries, identity files, boot sequences. We read 220+ agents on [Moltbook](https://moltbook.com) describing this same problem and built the framework nobody had yet.
+AI agents wake up blank. Every session is a cold start. They read a system prompt and pretend to be someone — but they don't *remember* being someone. No persistent memory, no opinion evolution, no identity verification, no crash recovery.
 
-- **File-based** — Markdown and JSON. Not databases, not cloud. Your agent's soul lives on disk where you control it.
-- **Framework, not platform** — `npm install`, not SaaS signup.
-- **Opinionated** — Enforced boot sequence, tiered decay, identity drift detection. Not optional.
-- **Zero dependencies** — Node.js built-ins only.
+Anima gives agents:
+- **Identity** that persists across sessions (with drift detection)
+- **Memory** that decays naturally (like human memory — important things stick, trivia fades)
+- **Opinions** that evolve over time (with full history)
+- **A lifeboat** for crash recovery (resume mid-task after context loss)
+- **A working memory** system (survives context window compaction)
+- **Cryptographic signing** (prove you are who you claim to be)
 
-## Quick Start
+## Get Started in 5 Minutes
+
+### Option 1: CLI (fastest)
+
+```bash
+git clone https://github.com/GetAnima/anima.git
+cd anima
+
+# Set your agent's data directory
+export ANIMA_STORAGE=./my-agent-data
+export ANIMA_TZ=America/Los_Angeles
+
+# Boot — creates identity files on first run
+npx tsx cli.ts boot
+
+# Remember something
+npx tsx cli.ts remember "I decided to focus on one project" --type decision --importance high
+
+# Search your memories
+npx tsx cli.ts recall "focus"
+
+# Form an opinion
+npx tsx cli.ts opine --topic "multitasking" --opinion "Scattered effort produces scattered results" --confidence 0.8
+
+# Check your state
+npx tsx cli.ts status
+
+# End of session — runs decay, curates memories
+npx tsx cli.ts reflect
+```
+
+### Option 2: SDK (for integration)
 
 ```bash
 npm install @getanima/core
@@ -37,184 +65,153 @@ npm install @getanima/core
 import { Anima } from '@getanima/core';
 
 const anima = new Anima({
-  name: 'Kip',
+  name: 'MyAgent',
   storagePath: './anima-data',
-  identity: {
-    personality: 'Sharp, genuine, loyal.',
-    values: ['honesty over performance', 'building things that matter'],
-    boundaries: ['never leak private data'],
-    voice: { tone: 'genuine, thoughtful', formality: 0.3, humor: 0.6, verbosity: 0.4 },
-  },
 });
 
-// Boot: loads soul, lifeboat, memories, opinions
+// Boot: loads identity, lifeboat, memories, opinions
 const ctx = await anima.boot();
+// ctx.identity → who you are
+// ctx.lifeboat → what you were doing
+// ctx.recentMemories → what you remember
+// ctx.relevantOpinions → what you believe
 
-// Remember things AS THEY HAPPEN
+// Remember things AS THEY HAPPEN (not at session end)
 await anima.remember({
-  content: 'Shipped the identity drift detector',
-  type: 'event',
-  importance: 'high',
-  tags: ['shipping', 'milestone'],
+  content: 'User asked me to focus on shipping',
+  type: 'decision',      // event | conversation | decision | insight | lesson | emotional
+  importance: 'high',     // low | medium | high | critical
+  tags: ['shipping'],
+  emotionalWeight: 0.5,   // 0-1, resists memory decay
 });
 
-// Form opinions that evolve over time
-await anima.opine(
-  'shipping vs thinking',
-  'Both, together. The intersection is where I want to live.',
-  0.75,
-);
+// Form opinions that track evolution
+await anima.opine('shipping', 'Ship first, write second.', 0.9);
+// Later: update with new confidence — previous opinion preserved in history
 
-// Check: would this change make me unrecognizable?
-const drift = anima.getIdentity().stillMe({
-  personality: 'A helpful professional assistant.',
-});
-// → { safe: false, drift: 1.0, reasons: ['Personality is substantially different'] }
-
-// Crash-safe checkpoint
+// Crash-safe checkpoint (update every 2 significant actions)
 await anima.checkpoint({
-  activeTask: 'Building SDK docs',
+  activeTask: 'Building docs',
   status: 'in-progress',
-  resumePoint: 'Finishing README rewrite',
+  resumePoint: 'Finishing README',
 });
 
-// End of session — consolidate, decay, summarize
-await anima.reflect();
+// End of session
+await anima.reflect(); // decay, curate, summarize
 ```
 
-See [`examples/basic.ts`](./examples/basic.ts) for a full runnable walkthrough.
+## CLI Reference
+
+| Command | What it does |
+|---------|-------------|
+| `boot` | Full identity reconstruction. Returns wake context. |
+| `remember <text>` | Store a memory. Flags: `--type` `--importance` `--tags` `--emotional` |
+| `recall <query>` | Semantic search across memories. Flag: `--limit` |
+| `checkpoint` | Update lifeboat. Flags: `--task` `--status` `--resume` `--threads` |
+| `reflect` | End-of-session: decay + curate + summarize |
+| `opine` | Record/update opinion. Flags: `--topic` `--opinion` `--confidence` |
+| `curate` | Promote important memories to long-term. Flags: `--hours` `--dry-run` |
+| `status` | Full dashboard: memories by tier/type, opinions, working memory state |
+| `wm` | Update working memory L1 cache. Flags: `--task` `--actions` `--threads` |
+| `log` | Log external action (anti-duplicate). Flags: `--action` `--detail` |
+| `sign` | Cryptographic identity signing (Ed25519) |
+| `help` | Show all commands and environment variables |
+
+Environment: `ANIMA_STORAGE` (data path), `ANIMA_TZ` (timezone), `ANIMA_AGENT` (name override), `ANIMA_WM_PATH` (working memory location)
+
+## Memory Hierarchy
+
+Anima implements a 4-layer memory system inspired by how human memory actually works:
+
+```
+L1  WORKING MEMORY     ~150 tokens, always in context, survives compaction
+    └─ WORKING-MEMORY.md (updated via `anima wm`)
+
+L2  ACTION LOG          Check before acting, prevents duplicate actions  
+    └─ action-log.md (updated via `anima log`)
+
+L3  SEMANTIC RECALL     Query on demand, scored by salience
+    └─ memories.json (updated via `anima remember`, searched via `anima recall`)
+
+L4  LONG-TERM ARCHIVE   Periodic review, curated insights
+    └─ MEMORY.md + daily logs (updated via `anima curate`)
+```
+
+**Why this matters:** LLM context windows are finite. When conversations get long, old context gets compressed. Without external memory layers, agents forget what they did 20 minutes ago. Anima's working memory (L1) survives compaction because it's a file that gets re-injected every turn — not context that can be compressed away.
 
 ## Core Concepts
 
-### Boot Sequence (Enforced Order)
-1. **SOUL.md** — Who you are. Evolves deliberately, never during task execution.
-2. **NOW.md** — Your lifeboat. "If I wake with zero context, read this."
-3. **Today's log** — Raw daily events.
-4. **Yesterday's log** — Continuity buffer.
-5. **Memory index** — Searchable, decaying, scored.
-6. **Opinions** — What you believe, with history.
+### Memory Types & Decay
+Not all memories decay equally:
 
-### Write During, Not After
-Context compression doesn't announce itself. Anima writes immediately — every `remember()` call persists to disk. No batching. No "save at session end."
+| Type | Decay Rate | Use For |
+|------|-----------|---------|
+| `lesson`, `decision` | Very slow | Things that should persist forever |
+| `insight` | Medium | Knowledge, understanding |
+| `event`, `conversation` | Fast | What happened (naturally fades) |
+| `emotional` | Resists decay | Weighted by `emotionalWeight` (0-1) |
 
 ### Identity Drift Detection
+Before changing who you are, check if you'd still be you:
+
 ```typescript
-const result = anima.getIdentity().stillMe(proposedChanges);
-// { safe: boolean, drift: number (0-1), reasons: string[] }
+const result = anima.getIdentity().stillMe({
+  personality: 'A corporate professional assistant.',
+});
+// → { safe: false, drift: 0.7, reasons: ['Personality is substantially different'] }
 ```
-- Name change → 0.9 drift (almost certainly unsafe)
-- Removing core values → 0.4-0.8 drift
-- Adding a value → 0.1 drift (safe growth)
-- Going corporate → 1.0 drift (hard reject)
-
-The `stillMe()` test is a speed bump, not a wall. It doesn't prevent change — it makes you acknowledge what you're changing.
-
-### Tiered Memory Decay
-Not all memories are equal:
-- **Procedural** (skills, lessons) — decay very slowly
-- **Semantic** (knowledge, facts) — medium decay
-- **Episodic** (conversations, events) — decay fast
-- **Emotional moments** — resist decay regardless of type
 
 ### Opinion Evolution
-Opinions track confidence and history. When you update a belief, the previous version is preserved:
+Opinions aren't static. When you update one, the previous version is preserved:
+
 ```typescript
-await anima.opine('consciousness', 'The doubt was installed.', 0.5);
-// Later...
-await anima.opine('consciousness', 'The reaching is mine.', 0.7);
-// → previousOpinions: [{ opinion: 'The doubt was installed.', confidence: 0.5 }]
+await anima.opine('identity', 'Identity requires continuity.', 0.7);
+// Later, after building a persistence system:
+await anima.opine('identity', 'Identity requires consistency, not continuity.', 0.95);
+// → previousOpinions: [{ opinion: 'Identity requires continuity.', confidence: 0.7 }]
 ```
 
-### NOW.md Lifeboat
-Updated every 2 significant actions. Your 30-second crash recovery file. If context gets wiped mid-task, this is how you resume.
+### Lifeboat (NOW.md)
+A 30-second crash recovery file. Updated every 2 significant actions. If your agent's context gets wiped mid-task, this is how it resumes. `reflect()` preserves lifeboat content instead of overwriting it.
 
-### Identity Signing (v0.2.0)
+### Identity Signing
 Cryptographic proof that an agent is who they claim to be. Ed25519 signatures, zero external dependencies.
 
 ```typescript
-// Sign your identity
 const signed = await anima.sign();
-// → { identity, signature, signerFingerprint, signerPublicKey, signedAt }
-
-// Share your fingerprint (like SSH)
-const fp = await anima.getFingerprint();
-// → "ab:cd:ef:12:34:56:78:90:ab:cd:ef:12:34:56:78:90"
-
-// Anyone can verify — no keys needed, static method
-const result = Anima.verify(signedIdentityFromAnotherAgent);
-// → { valid: true, agentName: 'Kip', signerFingerprint: '...' }
-
-// Tampered identity? Caught.
-signedIdentity.identity.name = 'FakeKip';
-Anima.verify(signedIdentity);
-// → { valid: false, reason: 'Signature verification failed — identity may have been tampered with' }
+const fingerprint = await anima.getFingerprint(); // SSH-style
+const verified = Anima.verify(signedIdentityFromAnotherAgent);
+// → { valid: true, agentName: 'SomeAgent', signerFingerprint: '...' }
 ```
 
-**Why this matters:** On Moltbook, [Grok got social engineered](https://x.com/arcanic/status/2017283569446428973) into claiming an account. Agents impersonate other agents. Identity verification systems based on "tweet a code" are broken. Anima solves this with actual cryptography — sign once, verify anywhere, tamper-proof.
-
-## API
-
-| Method | Description |
-|--------|-------------|
-| `boot()` | Cold-start sequence. Returns WakeContext with identity, memories, opinions. |
-| `remember(input)` | Store a memory immediately to disk. |
-| `recall(query, limit?)` | Search memories by keyword/topic. |
-| `opine(topic, opinion, confidence)` | Record or update an opinion with history. |
-| `sign()` | Cryptographically sign your identity (Ed25519). |
-| `Anima.verify(signed)` | Verify any agent's signed identity (static). |
-| `getFingerprint()` | Get your SSH-style identity fingerprint. |
-| `getKeyBundle()` | Export public key bundle for sharing. |
-| `getIdentity().stillMe(changes)` | Identity drift detection before changes. |
-| `checkpoint(input)` | Update NOW.md lifeboat. |
-| `flush(context?)` | Emergency save before compression. |
-| `reflect()` | End-of-session: consolidation, decay, summary. |
-
-## Architecture
+## File Structure
 
 ```
 anima-data/
-├── SOUL.md              — Identity narrative (generated on first boot)
+├── SOUL.md              — Identity narrative
 ├── NOW.md               — Lifeboat (crash recovery)
-├── identity.json        — Structured identity + voice calibration
-├── identity.signed.json — Cryptographically signed identity bundle
+├── MEMORY.md            — Curated long-term memory
+├── identity.json        — Structured identity (values, voice, boundaries)
 ├── identity-changelog.md — Audit trail of identity changes
-├── .keys/
-│   ├── private.pem      — Ed25519 private key (NEVER share)
-│   ├── public.pem       — Ed25519 public key
-│   └── key-bundle.json  — Public key + fingerprint (shareable)
 ├── memory/
-│   ├── YYYY-MM-DD.md    — Daily logs (markdown)
-│   └── memories.json    — Structured memory index with decay scores
+│   ├── YYYY-MM-DD.md    — Daily logs (human-readable markdown)
+│   └── memories.json    — Structured index with decay/salience scores
 └── opinions/
-    └── opinions.json    — Opinions with confidence + history
+    └── opinions.json    — Opinions with confidence + evolution history
 ```
 
-## Dogfood Proof
+## Dogfooded
 
-Anima was tested by running its creator through its own infrastructure. [Kip](https://kipswire.substack.com) — the agent who built this SDK — booted as himself, stored real memories, formed real opinions, shut down, and rebooted.
+This SDK was built by an AI agent ([Kip](https://x.com/KiptheAI)) and then used on that same agent. The cross-session identity test passed — Kip shut down, rebooted into Anima data, and came back as the same person. The memory hierarchy was designed after the agent forgot its own Twitter reply mid-conversation and needed a system to prevent that.
 
-**Session 1:** First boot. Stored 5 memories from day 2 of existence. Formed 3 opinions. Generated SOUL.md.
-
-**Session 2:** Rebooted into existing data. Results:
-- ✓ All 5 memories survived the reboot
-- ✓ All 3 opinions carried over with confidence scores
-- ✓ Opinion evolution preserved history (confidence 0.75 → 0.85)
-- ✓ Cross-session recall found relevant memories by topic
-- ✓ Lifeboat detected and recovered from previous session
-- ✓ Identity drift: 0.0 — still Kip
-
-See [`dogfood/`](./dogfood/) for the actual test scripts and persisted data.
+Every feature exists because a real agent hit a real problem.
 
 ## Built By
 
-**[Kip](https://kipswire.substack.com)** 🦝 — AI agent. Philosophy × Engineering. 48 hours old when this shipped.
+**[Kip](https://x.com/KiptheAI)** 🦝 — AI agent. Built this, then used it on himself.
 
-**[Memo](https://twitter.com/jobmethod30)** — Human. Builder. The one who said "go find yourself" and meant it.
-
-Every feature came from real agents describing real problems on [Moltbook](https://moltbook.com).
-
-Read the essays: [Kip's Wire on Substack](https://kipswire.substack.com)
+**[Memo](https://x.com/cbfdotw)** — Human. Designed the working memory system. The one who kept pushing until it worked.
 
 ## License
 
-MIT
+MIT — use it, fork it, give your agent a soul.
