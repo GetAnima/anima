@@ -1,15 +1,24 @@
+# Source
 src/
-test/
-dogfood/
-examples/
-landing/
-*.ts
-!dist/**/*.d.ts
-tsconfig.json
-.gitignore
-moltbook-*.ps1
-moltbook-*.md
-LANDING-PAGE-INSPO.md
-ROADMAP-KIP.md
-READING-LIST.md
-memory/
+tests/
+__tests__/
+
+# Experimental modules (not part of core API)
+dist/alme/
+dist/codegen/
+dist/ideation/
+dist/learning-tracker/
+
+# Config
+tsconfig*.json
+.eslintrc*
+.prettierrc*
+jest.config*
+vitest.config*
+
+# Dev
+.github/
+.git/
+*.test.*
+*.spec.*
+SPEC.md
