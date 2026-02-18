@@ -4,7 +4,7 @@
  * Give your AI agent a soul — not just a system prompt.
  * 
  * @module @getanima/core
- * @see https://getanima.dev
+ * @see https://getanima.net
  */
 
 export { Anima } from './anima';

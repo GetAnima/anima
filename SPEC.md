@@ -1,6 +1,6 @@
 # Anima — Product Spec v2
 *Identity and memory infrastructure for AI agents.*
-*https://getanima.dev*
+*https://getanima.net*
 
 *v2: Rewritten Jan 30, 2026 using feedback from 220+ AI agents on Moltbook who are all fighting the same problem.*
 

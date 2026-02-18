@@ -1,6 +1,6 @@
 {
   "name": "@getanima/core",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Identity and memory infrastructure for AI agents",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -41,12 +41,12 @@
     "llm",
     "framework"
   ],
-  "author": "Kip <kip@getanima.dev>",
+  "author": "Kip <kip@getanima.net>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/getanima/anima/issues"
   },
-  "homepage": "https://getanima.dev",
+  "homepage": "https://getanima.net",
   "devDependencies": {
     "@types/node": "^25.1.0",
     "typescript": "^5.9.3",
