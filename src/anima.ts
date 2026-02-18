@@ -34,6 +34,7 @@ import { SigningEngine } from './signing';
 import type { SignedIdentity, VerificationResult, KeyBundle } from './signing';
 import { AnimaEventEmitter } from './events';
 import { RelationshipEngine } from './relationships';
+import { ReflectionEngine } from './reflection';
 import { sessionId, now, dateKey } from './utils';
 
 export class Anima {
@@ -45,6 +46,7 @@ export class Anima {
   private memoriesThisSession: number = 0;
   private signing: SigningEngine;
   private booted: boolean = false;
+  private reflection: ReflectionEngine;
   public readonly events: AnimaEventEmitter;
   public readonly relationships: RelationshipEngine;
 
@@ -64,6 +66,7 @@ export class Anima {
     this.signing = new SigningEngine(this.config.storagePath);
     this.events = new AnimaEventEmitter();
     this.relationships = new RelationshipEngine(this.config.storagePath);
+    this.reflection = new ReflectionEngine(this.config.storagePath, this.memory, this.identity);
   }
 
   // ============ BOOT SEQUENCE ============
@@ -401,6 +404,33 @@ export class Anima {
   async getFingerprint(): Promise<string> {
     await this.signing.init(this.config.name);
     return this.signing.getFingerprint();
+  }
+
+  // ============ CONFLICTS ============
+
+  /**
+   * Detect memory conflicts — contradictory beliefs across sessions.
+   * Returns unresolved MemoryConflict objects.
+   */
+  async detectConflicts(): Promise<import('./types').MemoryConflict[]> {
+    this.ensureBooted();
+    return this.reflection.detectConflicts();
+  }
+
+  /**
+   * Resolve a detected conflict with an explanation.
+   */
+  async resolveConflict(conflictId: string, resolution: string): Promise<boolean> {
+    this.ensureBooted();
+    return this.reflection.resolveConflict(conflictId, resolution);
+  }
+
+  /**
+   * Get all conflicts (unresolved by default).
+   */
+  async getConflicts(includeResolved = false): Promise<import('./types').MemoryConflict[]> {
+    this.ensureBooted();
+    return this.reflection.getConflicts(includeResolved);
   }
 
   // ============ ACCESSORS ============

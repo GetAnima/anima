@@ -5,11 +5,13 @@
  * Never during task execution — that's a core principle.
  */
 
-import type { Memory, Opinion, SessionSummary } from './types';
+import type { Memory, MemoryConflict, Opinion, SessionSummary } from './types';
 import { MemoryEngine } from './memory';
 import { IdentityManager } from './identity';
-import { now, dateKey, readFileSafe, writeFileSafe } from './utils';
+import { now, dateKey, readFileSafe, ensureDir } from './utils';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
+import { writeFile } from 'fs/promises';
 
 export class ReflectionEngine {
   private storagePath: string;
@@ -84,25 +86,82 @@ export class ReflectionEngine {
   }
 
   /**
-   * Check for memory conflicts — when different sessions have contradictory beliefs.
+   * Detect memory conflicts — when opinions have shifted, indicating contradictory beliefs
+   * across sessions. Returns structured MemoryConflict objects.
    */
-  async detectConflicts(): Promise<Array<{ topic: string; memories: Memory[] }>> {
+  async detectConflicts(): Promise<MemoryConflict[]> {
     const opinions = await this.memory.getOpinions();
-    const conflicts: Array<{ topic: string; memories: Memory[] }> = [];
+    const conflictsPath = join(this.storagePath, 'conflicts.json');
+    const raw = await readFileSafe(conflictsPath);
+    const existing: MemoryConflict[] = JSON.parse(raw || '[]');
+    const conflicts: MemoryConflict[] = [];
 
     for (const opinion of opinions) {
-      if (opinion.previousOpinions.length > 0) {
-        // This opinion has changed — potential conflict
-        const relatedMemories = await this.memory.recall(opinion.topic, 5);
-        if (relatedMemories.length > 1) {
-          conflicts.push({
-            topic: opinion.topic,
-            memories: relatedMemories,
-          });
-        }
-      }
+      if (opinion.previousOpinions.length === 0) continue;
+
+      // Skip already resolved conflicts
+      const alreadyResolved = existing.find(
+        c => c.topic === opinion.topic && c.resolved
+      );
+      if (alreadyResolved) continue;
+
+      const latest = opinion.previousOpinions[opinion.previousOpinions.length - 1];
+      conflicts.push({
+        id: existing.find(c => c.topic === opinion.topic)?.id || randomUUID(),
+        topic: opinion.topic,
+        positionA: {
+          content: latest.opinion,
+          session: latest.date || 'unknown',
+          date: latest.date || 'unknown',
+        },
+        positionB: {
+          content: opinion.current,
+          session: 'current',
+          date: opinion.updatedAt,
+        },
+        resolved: false,
+      });
+    }
+
+    // Persist conflicts (overwrite, not append)
+    if (conflicts.length > 0) {
+      const merged = [
+        ...existing.filter(c => c.resolved),
+        ...conflicts,
+      ];
+      await ensureDir(this.storagePath);
+      await writeFile(conflictsPath, JSON.stringify(merged, null, 2), 'utf-8');
     }
 
     return conflicts;
+  }
+
+  /**
+   * Resolve a conflict by providing a resolution explanation.
+   */
+  async resolveConflict(conflictId: string, resolution: string): Promise<boolean> {
+    const conflictsPath = join(this.storagePath, 'conflicts.json');
+    const raw = await readFileSafe(conflictsPath);
+    const conflicts: MemoryConflict[] = JSON.parse(raw || '[]');
+
+    const conflict = conflicts.find(c => c.id === conflictId);
+    if (!conflict) return false;
+
+    conflict.resolved = true;
+    conflict.resolution = resolution;
+    conflict.resolvedAt = now();
+
+    await writeFile(conflictsPath, JSON.stringify(conflicts, null, 2), 'utf-8');
+    return true;
+  }
+
+  /**
+   * Get all conflicts (resolved and unresolved).
+   */
+  async getConflicts(includeResolved = false): Promise<MemoryConflict[]> {
+    const conflictsPath = join(this.storagePath, 'conflicts.json');
+    const raw = await readFileSafe(conflictsPath);
+    const conflicts: MemoryConflict[] = JSON.parse(raw || '[]');
+    return includeResolved ? conflicts : conflicts.filter(c => !c.resolved);
   }
 }
