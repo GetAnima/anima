@@ -32,6 +32,7 @@ import { MemoryEngine } from './memory';
 import { IdentityManager } from './identity';
 import { SigningEngine } from './signing';
 import type { SignedIdentity, VerificationResult, KeyBundle } from './signing';
+import { AnimaEventEmitter } from './events';
 import { sessionId, now, dateKey } from './utils';
 
 export class Anima {
@@ -43,6 +44,7 @@ export class Anima {
   private memoriesThisSession: number = 0;
   private signing: SigningEngine;
   private booted: boolean = false;
+  public readonly events: AnimaEventEmitter;
 
   constructor(config: AnimaConfig) {
     this.config = {
@@ -58,6 +60,7 @@ export class Anima {
     this.identity = new IdentityManager(this.config.storagePath, this.config.identity);
     this.memory = new MemoryEngine(this.config.storagePath, this.session, this.config.decay);
     this.signing = new SigningEngine(this.config.storagePath);
+    this.events = new AnimaEventEmitter();
   }
 
   // ============ BOOT SEQUENCE ============
@@ -147,6 +150,13 @@ export class Anima {
       tags: ['system', 'boot'],
     });
 
+    // Emit afterWake event
+    await this.events.emit('afterWake', {
+      sessionId: this.session,
+      bootTimeMs: this.bootTime,
+      memoriesLoaded: recentMemories.length,
+    });
+
     return context;
   }
 
@@ -220,7 +230,20 @@ export class Anima {
    */
   async opine(topic: string, opinion: string, confidence: number): Promise<Opinion> {
     this.ensureBooted();
-    return this.memory.opine({ topic, opinion, confidence });
+    // Check if opinion exists before updating
+    const existing = (await this.memory.getOpinions()).find(o => o.topic === topic);
+    const result = await this.memory.opine({ topic, opinion, confidence });
+    
+    if (existing && existing.current !== opinion) {
+      await this.events.emit('opinionChanged', {
+        topic,
+        oldOpinion: existing.current,
+        newOpinion: opinion,
+        oldConfidence: existing.confidence,
+        newConfidence: confidence,
+      });
+    }
+    return result;
   }
 
   // ============ CURATE ============
@@ -318,6 +341,13 @@ export class Anima {
         updatedAt: now(),
       });
     }
+
+    // Emit afterSleep event
+    await this.events.emit('afterSleep', {
+      sessionId: this.session,
+      memoriesCreated: this.memoriesThisSession,
+      memoriesDecayed: decayResult.decayed,
+    });
 
     return summary;
   }

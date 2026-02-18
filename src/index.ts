@@ -12,6 +12,8 @@ export { MemoryEngine } from './memory';
 export { IdentityManager } from './identity';
 export { ReflectionEngine } from './reflection';
 export { SigningEngine } from './signing';
+export { AnimaEventEmitter } from './events';
+export type { AnimaEventMap } from './events';
 
 export type {
   AnimaConfig,
