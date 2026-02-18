@@ -1,6 +1,6 @@
 {
   "name": "@getanima/core",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Identity and memory infrastructure for AI agents",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
