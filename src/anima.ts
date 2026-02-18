@@ -272,7 +272,7 @@ export class Anima {
     // Generate session summary
     const summary: SessionSummary = {
       sessionId: this.session,
-      startedAt: new Date(Date.now() - (Date.now() - this.bootTime)).toISOString(),
+      startedAt: new Date(Date.now() - this.bootTime).toISOString(),
       endedAt: now(),
       summary: `Session ${this.session}: ${this.memoriesThisSession} memories created. Decay: ${decayResult.decayed} removed, ${decayResult.archived} archived, ${decayResult.kept} kept.`,
       memoriesCreated: this.memoriesThisSession,
