@@ -179,6 +179,11 @@ ${checkpoint.emergency ? '⚠️ **EMERGENCY FLAG SET** — Something critical w
     return readFileSafe(join(this.storagePath, 'NOW.md'));
   }
 
+  /** Write raw content to lifeboat (for preserving hand-written content) */
+  async writeLifeboatRaw(content: string): Promise<void> {
+    await writeFileSafe(join(this.storagePath, 'NOW.md'), content);
+  }
+
   // ============ CORE: Daily Log ============
 
   /** Read today's daily log */

@@ -294,13 +294,30 @@ export class Anima {
       tags: ['system', 'session-summary'],
     });
 
-    // Clear lifeboat (session ended normally)
-    await this.memory.updateLifeboat({
-      activeTask: 'No active task — session ended normally',
-      status: 'done',
-      resumePoint: 'Start fresh next session',
-      updatedAt: now(),
-    });
+    // Update lifeboat with session summary — PRESERVE existing content
+    // The lifeboat may contain a hand-written letter from the agent to future-self.
+    // Append session summary instead of nuking everything.
+    const existingLifeboat = await this.memory.readLifeboat();
+    const sessionEndNote = [
+      `\n## Last Session Summary (${now()})`,
+      summary.summary,
+      `Curated ${curationResult.curated.length} memories to long-term.`,
+      `\n## Status`,
+      `done — session ended normally. Read everything above for context.`,
+    ].join('\n');
+
+    if (existingLifeboat && !existingLifeboat.includes('session ended normally')) {
+      // Preserve existing lifeboat, append summary
+      await this.memory.writeLifeboatRaw(existingLifeboat + '\n' + sessionEndNote);
+    } else {
+      // No meaningful lifeboat content — write clean end state
+      await this.memory.updateLifeboat({
+        activeTask: 'No active task — session ended normally',
+        status: 'done',
+        resumePoint: 'Start fresh next session',
+        updatedAt: now(),
+      });
+    }
 
     return summary;
   }
