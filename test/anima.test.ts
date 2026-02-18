@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Anima } from '../src/anima';
 import { rmSync, existsSync } from 'fs';
 import { join } from 'path';
+import { dateKey } from '../src/utils';
 
 const TEST_DIR = join(__dirname, '.test-anima-data');
 
@@ -87,7 +88,7 @@ describe('Anima', () => {
 
       await anima.remember({ content: 'Test memory' });
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = dateKey();
       const logPath = join(TEST_DIR, 'memory', `${today}.md`);
       expect(existsSync(logPath)).toBe(true);
     });
