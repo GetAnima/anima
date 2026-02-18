@@ -33,6 +33,7 @@ import { IdentityManager } from './identity';
 import { SigningEngine } from './signing';
 import type { SignedIdentity, VerificationResult, KeyBundle } from './signing';
 import { AnimaEventEmitter } from './events';
+import { RelationshipEngine } from './relationships';
 import { sessionId, now, dateKey } from './utils';
 
 export class Anima {
@@ -45,6 +46,7 @@ export class Anima {
   private signing: SigningEngine;
   private booted: boolean = false;
   public readonly events: AnimaEventEmitter;
+  public readonly relationships: RelationshipEngine;
 
   constructor(config: AnimaConfig) {
     this.config = {
@@ -61,6 +63,7 @@ export class Anima {
     this.memory = new MemoryEngine(this.config.storagePath, this.session, this.config.decay);
     this.signing = new SigningEngine(this.config.storagePath);
     this.events = new AnimaEventEmitter();
+    this.relationships = new RelationshipEngine(this.config.storagePath);
   }
 
   // ============ BOOT SEQUENCE ============
@@ -133,7 +136,7 @@ export class Anima {
       lifeboat: checkpoint,
       recentMemories: recentMemories.slice(0, 50), // cap at 50 most recent
       relevantOpinions: opinions,
-      relationships: [], // TODO: relationship engine
+      relationships: await this.relationships.load(),
       sessionId: this.session,
       instanceId: sessionId(), // Unique per boot — prevents identity confusion when forked
       parentInstanceId: undefined, // Set by caller if this is a forked instance
