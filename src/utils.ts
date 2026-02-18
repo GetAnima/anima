@@ -23,10 +23,17 @@ export function now(): string {
   return new Date().toISOString();
 }
 
-/** Format date as YYYY-MM-DD */
+/** Format date as YYYY-MM-DD in local timezone (or ANIMA_TZ env) */
 export function dateKey(date?: Date): string {
   const d = date || new Date();
-  return d.toISOString().split('T')[0];
+  const tz = process.env.ANIMA_TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    // Use Intl to get locale-correct date parts
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    return parts; // en-CA formats as YYYY-MM-DD
+  } catch {
+    return d.toISOString().split('T')[0];
+  }
 }
 
 /** Yesterday's date key */
@@ -114,7 +121,13 @@ export function memoryToMarkdown(memory: { id: string; type: string; content: st
   ].join('\n');
 }
 
-/** Calculate salience score: S = novelty + retention + momentum + continuity - effort */
+/** Calculate salience score: weighted combination that actually differentiates memories.
+ * Old formula (novelty + retention + momentum + continuity - effort) always produced ~1.0
+ * because new memories have high novelty AND high momentum, pushing sum past 1.0 immediately.
+ * 
+ * New formula uses weights that keep scores distributed across 0-1 range:
+ * S = 0.25*novelty + 0.25*retention + 0.2*momentum + 0.2*continuity + 0.1*(1-effort)
+ */
 export function calculateSalience(params: {
   novelty: number;       // 0-1: how new/surprising
   retention: number;     // 0-1: how many times accessed
@@ -123,7 +136,8 @@ export function calculateSalience(params: {
   effort: number;        // 0-1: cost to reconstruct
 }): number {
   const { novelty, retention, momentum, continuity, effort } = params;
-  return Math.max(0, Math.min(1, novelty + retention + momentum + continuity - effort));
+  const score = (0.25 * novelty) + (0.25 * retention) + (0.2 * momentum) + (0.2 * continuity) + (0.1 * (1 - effort));
+  return Math.max(0, Math.min(1, score));
 }
 
 /** Calculate memory decay based on type and time */

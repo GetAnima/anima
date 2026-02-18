@@ -444,6 +444,12 @@ ${checkpoint.emergency ? '⚠️ **EMERGENCY FLAG SET** — Something critical w
     return [...this.memories];
   }
 
+  /** Public index loader for quickLoad (no boot event) */
+  async loadIndexPublic(): Promise<void> {
+    await this.loadIndex();
+    await this.loadOpinions();
+  }
+
   private async loadIndex(): Promise<void> {
     const raw = await readFileSafe(join(this.memoryDir, 'memories.json'));
     if (raw) {

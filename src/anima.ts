@@ -69,6 +69,18 @@ export class Anima {
    * Returns a WakeContext with everything the agent needs to start working.
    * Target: productive state in <60 seconds.
    */
+  /**
+   * QuickLoad — lightweight init for CLI commands that don't need full boot context.
+   * Loads index + opinions without logging a boot event or returning full context.
+   */
+  async quickLoad(): Promise<void> {
+    if (this.booted) return;
+    await this.identity.load();
+    // Load memory index and opinions silently
+    await this.memory.loadIndexPublic();
+    this.booted = true;
+  }
+
   async boot(): Promise<WakeContext> {
     const startTime = Date.now();
 
