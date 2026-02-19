@@ -222,6 +222,98 @@ describe('Anima', () => {
     });
   });
 
+  describe('episodes integration', () => {
+    it('exposes episodes engine after boot', async () => {
+      const anima = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
+      await anima.boot();
+
+      expect(anima.episodes).toBeDefined();
+      expect(typeof anima.episodes.record).toBe('function');
+      expect(typeof anima.episodes.query).toBe('function');
+      expect(typeof anima.episodes.recent).toBe('function');
+    });
+
+    it('can record and query episodes through anima instance', async () => {
+      const anima = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
+      await anima.boot();
+
+      await anima.episodes.record({
+        title: 'Shipped the SDK',
+        summary: 'Published v1.0 to npm after weeks of work',
+        emotionalWeight: 0.9,
+        participants: ['kip', 'memo'],
+        tags: ['milestone', 'shipping'],
+        lessons: ['Ship early, iterate fast'],
+      });
+
+      const results = await anima.episodes.query({ text: 'SDK' });
+      expect(results.length).toBe(1);
+      expect(results[0].title).toBe('Shipped the SDK');
+    });
+
+    it('includes recentEpisodes in WakeContext', async () => {
+      // Boot once, record episodes, then boot fresh instance
+      const anima1 = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
+      await anima1.boot();
+
+      await anima1.episodes.record({
+        title: 'First conversation',
+        summary: 'Talked about identity',
+      });
+      await anima1.episodes.record({
+        title: 'Second conversation',
+        summary: 'Built the memory engine',
+      });
+
+      // Fresh boot should include episodes in context
+      const anima2 = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
+      const ctx = await anima2.boot();
+
+      expect(ctx.recentEpisodes).toBeDefined();
+      expect(ctx.recentEpisodes!.length).toBe(2);
+    });
+
+    it('episodes persist across sessions', async () => {
+      const anima1 = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
+      await anima1.boot();
+
+      await anima1.episodes.record({
+        title: 'Persistent episode',
+        summary: 'This should survive restarts',
+        emotionalWeight: 0.7,
+      });
+
+      await anima1.reflect();
+
+      const anima2 = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
+      await anima2.boot();
+
+      const recent = await anima2.episodes.recent();
+      expect(recent.length).toBe(1);
+      expect(recent[0].title).toBe('Persistent episode');
+    });
+
+    it('episode knowledge integrates with consolidation', async () => {
+      const anima = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
+      await anima.boot();
+
+      await anima.episodes.record({
+        title: 'Learning moment',
+        summary: 'Discovered something important',
+        emotionalWeight: 0.95,
+        participants: ['memo', 'kip', 'someone'],
+        lessons: ['Integration tests catch what unit tests miss'],
+        connections: { episodeIds: ['ep-1'] },
+      });
+
+      const stats = await anima.episodes.consolidate();
+      expect(stats.totalEpisodes).toBe(1);
+
+      const knowledge = await anima.episodes.getAllKnowledge();
+      expect(knowledge.some(k => k.insight.includes('Integration tests'))).toBe(true);
+    });
+  });
+
   describe('reflect()', () => {
     it('returns a session summary', async () => {
       const anima = new Anima({ name: 'TestAgent', storagePath: TEST_DIR });
