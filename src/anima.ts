@@ -35,6 +35,8 @@ import type { SignedIdentity, VerificationResult, KeyBundle } from './signing';
 import { AnimaEventEmitter } from './events';
 import { RelationshipEngine } from './relationships';
 import { ReflectionEngine } from './reflection';
+import { BehavioralState } from './state';
+import type { BootState, StateStats } from './types';
 import { sessionId, now, dateKey } from './utils';
 
 export class Anima {
@@ -49,6 +51,7 @@ export class Anima {
   private reflection: ReflectionEngine;
   public readonly events: AnimaEventEmitter;
   public readonly relationships: RelationshipEngine;
+  public readonly state: BehavioralState;
 
   constructor(config: AnimaConfig) {
     this.config = {
@@ -67,6 +70,7 @@ export class Anima {
     this.events = new AnimaEventEmitter();
     this.relationships = new RelationshipEngine(this.config.storagePath);
     this.reflection = new ReflectionEngine(this.config.storagePath, this.memory, this.identity);
+    this.state = new BehavioralState(this.config.storagePath);
   }
 
   // ============ BOOT SEQUENCE ============
@@ -130,6 +134,9 @@ export class Anima {
     // Step 7: Read long-term memory
     const longTermMemory = await this.memory.readLongTerm();
 
+    // Step 8: Load behavioral state (decision table, hypotheses, params, failures)
+    const behavioralState = await this.state.boot();
+
     this.bootTime = Date.now() - startTime;
     this.booted = true;
 
@@ -146,6 +153,7 @@ export class Anima {
       lastSessionSummary: todayLog || yesterdayLog || undefined,
       tokenBudget: 4000, // reasonable default
       tokensUsed: this.estimateTokens(identityData, recentMemories, opinions),
+      behavioralState,
     };
 
     // Log boot event

@@ -167,6 +167,8 @@ export interface WakeContext {
   tokenBudget: number;
   /** Estimated tokens used by this context */
   tokensUsed: number;
+  /** Behavioral state — decision table, hypotheses, params, failures */
+  behavioralState?: BootState;
 }
 
 // ============ EVENTS ============
