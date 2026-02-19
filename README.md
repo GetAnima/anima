@@ -20,8 +20,13 @@ Anima gives agents:
 - **Identity** that persists across sessions (with drift detection)
 - **Memory** that decays naturally (like human memory — important things stick, trivia fades)
 - **Opinions** that evolve over time (with full history)
+- **Episodic memory** — record experiences with emotional weight, auto-decay, promote lessons to knowledge
+- **Relationships** — track who you've met, interacted with, trust/closeness scores
+- **Behavioral state** — decision tables, failure registries, active hypotheses (a "save file" for behavior)
+- **Conflict detection** — find and resolve contradictions in your memories
 - **A lifeboat** for crash recovery (resume mid-task after context loss)
 - **A working memory** system (survives context window compaction)
+- **Typed events** — hook into boot, reflect, opinion changes
 - **Cryptographic signing** (prove you are who you claim to be)
 
 ## Get Started in 5 Minutes
@@ -174,6 +179,68 @@ await anima.opine('identity', 'Identity requires consistency, not continuity.', 
 ### Lifeboat (NOW.md)
 A 30-second crash recovery file. Updated every 2 significant actions. If your agent's context gets wiped mid-task, this is how it resumes. `reflect()` preserves lifeboat content instead of overwriting it.
 
+### Episodic Memory
+Record experiences as episodes — with emotional weight, participants, and automatic salience decay:
+
+```typescript
+await anima.episodes.record({
+  content: 'Had a breakthrough debugging the memory system',
+  emotionalWeight: 0.8,
+  participants: ['Memo'],
+  tags: ['debugging', 'breakthrough'],
+});
+
+// Query recent episodes
+const recent = await anima.episodes.query({ limit: 10 });
+
+// Consolidate — decay old episodes, promote lessons to knowledge
+const result = await anima.episodes.consolidate();
+// → { decayed: 3, promoted: 1, removed: 0 }
+```
+
+### Relationships
+Track people your agent interacts with — closeness, trust, interaction history:
+
+```typescript
+await anima.relationships.meet('Alice', { context: 'Met in Discord' });
+await anima.relationships.interact('Alice', 'positive', 'Helped debug my code');
+
+const closest = await anima.relationships.closest(5);
+// → [{ name: 'Alice', closeness: 0.7, trust: 0.8, interactions: 3 }]
+```
+
+### Behavioral State
+A "save file" for agent behavior — decision tables, failure patterns, active hypotheses:
+
+```typescript
+// Record decisions and their outcomes
+await anima.state.recordDecision('greeting-style', 'casual', { confidence: 0.8 });
+await anima.state.recordOutcome('greeting-style', 'casual', true, 'Users responded well');
+
+// Track failures to avoid repeating them
+await anima.state.recordFailure({
+  action: 'sent-long-message',
+  context: 'Discord group chat',
+  lesson: 'Keep group chat messages under 3 sentences',
+});
+
+// Test hypotheses over time
+await anima.state.createHypothesis({
+  claim: 'Users prefer code examples over explanations',
+  confidence: 0.6,
+});
+```
+
+### Conflict Detection
+Find and resolve contradictions in your memories:
+
+```typescript
+const conflicts = await anima.detectConflicts();
+// → [{ memory1: ..., memory2: ..., reason: 'Contradictory claims about...' }]
+
+await anima.resolveConflict(conflictId, 'memory1', 'Newer information is more accurate');
+```
+
 ### Identity Signing
 Cryptographic proof that an agent is who they claim to be. Ed25519 signatures, zero external dependencies.
 
@@ -196,8 +263,19 @@ anima-data/
 ├── memory/
 │   ├── YYYY-MM-DD.md    — Daily logs (human-readable markdown)
 │   └── memories.json    — Structured index with decay/salience scores
-└── opinions/
-    └── opinions.json    — Opinions with confidence + evolution history
+├── opinions/
+│   └── opinions.json    — Opinions with confidence + evolution history
+├── episodes/
+│   └── episodes.json    — Episodic memory with salience decay
+├── relationships/
+│   └── relationships.json — People you've met, trust/closeness scores
+├── state/
+│   ├── decisions.json   — Decision tables with outcomes
+│   ├── failures.json    — Failure registry (don't repeat mistakes)
+│   ├── hypotheses.json  — Active hypotheses under test
+│   └── params.json      — Behavioral parameters
+└── conflicts/
+    └── conflicts.json   — Detected memory contradictions
 ```
 
 ## Dogfooded
