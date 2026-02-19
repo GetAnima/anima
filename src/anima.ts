@@ -320,7 +320,7 @@ export class Anima {
       endedAt: now(),
       summary: `Session ${this.session}: ${this.memoriesThisSession} memories created. Decay: ${decayResult.decayed} removed, ${decayResult.archived} archived, ${decayResult.kept} kept.`,
       memoriesCreated: this.memoriesThisSession,
-      memoriesPromoted: 0, // TODO: track promotions
+      memoriesPromoted: curationResult.curated.length,
       memoriesDecayed: decayResult.decayed,
       opinionsFormed: opinions.length,
       opinionsChanged: opinions.filter(o => o.previousOpinions.length > 0).length,
