@@ -273,3 +273,104 @@ export interface KnowledgeInput {
   tags?: string[];
   sourceEpisodeIds?: string[];
 }
+
+// ============ BEHAVIORAL STATE (Layer 7) ============
+
+// -- Layer 1: Decision Table --
+
+export interface DecisionTable {
+  [situation: string]: {
+    [action: string]: { tries: number; successes: number };
+  };
+}
+
+export interface DecisionRecord {
+  situation: string;
+  action: string;
+  tries: number;
+  successes: number;
+  successRate: number;
+}
+
+export interface DecisionOutcome {
+  action: string;
+  successRate: number;
+  tries: number;
+  successes: number;
+}
+
+// -- Layer 2: Hypothesis Engine --
+
+export interface Hypothesis {
+  key: string;
+  confidence: number;            // 0-1, computed from evidence ratio
+  evidenceFor: number;
+  evidenceAgainst: number;
+  lastTested: string;
+  createdAt: string;
+  notes?: HypothesisNote[];
+}
+
+export interface HypothesisNote {
+  text: string;
+  supports: boolean;
+  date: string;
+}
+
+export interface HypothesisInput {
+  key: string;
+  startingConfidence?: number;   // defaults to 0.5 (neutral)
+}
+
+// -- Layer 3: Behavioral Parameters --
+
+export interface BehavioralParams {
+  [key: string]: number | boolean | string;
+}
+
+// -- Layer 4: Failure Registry --
+
+export interface Failure {
+  id: string;
+  situation: string;
+  failedApproach: string;
+  betterApproach: string;
+  tags: string[];
+  timesAvoided: number;
+  createdAt: string;
+}
+
+export interface FailureInput {
+  situation: string;
+  failedApproach: string;
+  betterApproach: string;
+  tags?: string[];
+}
+
+export interface FailureMatch {
+  failure: Failure;
+  relevance: number;             // 0-1
+}
+
+// -- Boot State (compact save file) --
+
+export interface BootState {
+  decisions: Record<string, { best: string; rate: number; alternatives: number }>;
+  hypotheses: Record<string, number>;   // key → confidence
+  params: BehavioralParams;
+  failures: { situation: string; avoid: string; instead: string }[];
+  bootedAt: string;
+}
+
+// -- Stats --
+
+export interface StateStats {
+  situations: number;
+  totalDecisions: number;
+  hypotheses: number;
+  strongBeliefs: number;         // confidence >= 0.8
+  weakBeliefs: number;           // confidence <= 0.3
+  params: number;
+  failures: number;
+  totalAvoidances: number;
+}

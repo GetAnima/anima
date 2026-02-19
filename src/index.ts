@@ -15,6 +15,7 @@ export { SigningEngine } from './signing';
 export { AnimaEventEmitter } from './events';
 export { RelationshipEngine } from './relationships';
 export { EpisodicMemory } from './episodes';
+export { BehavioralState } from './state';
 export { AnimaValidationError, LIMITS } from './validation';
 export type { AnimaEventMap } from './events';
 
@@ -43,6 +44,18 @@ export type {
   KnowledgeEntry,
   KnowledgeInput,
   KnowledgeHistory,
+  DecisionTable,
+  DecisionRecord,
+  DecisionOutcome,
+  Hypothesis,
+  HypothesisInput,
+  HypothesisNote,
+  BehavioralParams,
+  Failure,
+  FailureInput,
+  FailureMatch,
+  BootState,
+  StateStats,
 } from './types';
 
 export type {
