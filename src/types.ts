@@ -186,3 +186,90 @@ export interface AutoSaveConfig {
   intervalMinutes: number;
   onSave?: (summary: string) => void;
 }
+
+// ============ EPISODES (Layer 6) ============
+
+export interface Episode {
+  id: string;
+  title: string;
+  summary: string;
+  timestamp: string;
+  emotionalWeight: number;       // 0-1: how emotionally significant
+  importance: number;            // 0-1: auto-calculated from multiple signals
+  participants: string[];        // who was involved
+  tags: string[];
+  lessons: string[];             // what was learned from this experience
+  connections: {
+    episodeIds?: string[];       // linked episodes
+    opinionIds?: string[];       // opinions affected
+    memoryIds?: string[];        // related flat memories
+  };
+  accessCount: number;           // times this episode was retrieved
+  archived: boolean;
+  archivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EpisodeInput {
+  title: string;
+  summary: string;
+  timestamp?: string;            // defaults to now()
+  emotionalWeight?: number;      // defaults to 0.5
+  participants?: string[];
+  tags?: string[];
+  lessons?: string[];
+  connections?: {
+    episodeIds?: string[];
+    opinionIds?: string[];
+    memoryIds?: string[];
+  };
+}
+
+export interface EpisodeQuery {
+  text?: string;                 // search title + summary + lessons
+  tags?: string[];
+  participants?: string[];
+  after?: string;                // ISO timestamp
+  before?: string;               // ISO timestamp
+  minImportance?: number;        // 0-1
+  minEmotionalWeight?: number;   // 0-1
+  limit?: number;                // default 20
+}
+
+export interface EpisodeStats {
+  totalEpisodes: number;
+  activeEpisodes: number;
+  archivedEpisodes: number;
+  totalKnowledge: number;
+  decayedThisRun: number;
+  promotedThisRun: number;
+}
+
+// ============ KNOWLEDGE (Semantic Memory) ============
+
+export interface KnowledgeEntry {
+  id: string;
+  topic: string;
+  insight: string;
+  confidence: number;            // 0-1
+  tags: string[];
+  sourceEpisodeIds: string[];    // which episodes this was distilled from
+  previousInsights?: KnowledgeHistory[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeHistory {
+  insight: string;
+  confidence: number;
+  date: string;
+}
+
+export interface KnowledgeInput {
+  topic: string;
+  insight: string;
+  confidence?: number;           // defaults to 0.7
+  tags?: string[];
+  sourceEpisodeIds?: string[];
+}
