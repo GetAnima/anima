@@ -36,7 +36,8 @@ import { AnimaEventEmitter } from './events';
 import { RelationshipEngine } from './relationships';
 import { ReflectionEngine } from './reflection';
 import { BehavioralState } from './state';
-import type { BootState, StateStats } from './types';
+import { EpisodicMemory } from './episodes';
+import type { BootState, StateStats, Episode } from './types';
 import { sessionId, now, dateKey } from './utils';
 
 export class Anima {
@@ -52,6 +53,7 @@ export class Anima {
   public readonly events: AnimaEventEmitter;
   public readonly relationships: RelationshipEngine;
   public readonly state: BehavioralState;
+  public readonly episodes: EpisodicMemory;
 
   constructor(config: AnimaConfig) {
     this.config = {
@@ -71,6 +73,7 @@ export class Anima {
     this.relationships = new RelationshipEngine(this.config.storagePath);
     this.reflection = new ReflectionEngine(this.config.storagePath, this.memory, this.identity);
     this.state = new BehavioralState(this.config.storagePath);
+    this.episodes = new EpisodicMemory(this.config.storagePath);
   }
 
   // ============ BOOT SEQUENCE ============
@@ -137,6 +140,9 @@ export class Anima {
     // Step 8: Load behavioral state (decision table, hypotheses, params, failures)
     const behavioralState = await this.state.boot();
 
+    // Step 9: Load recent episodes from episodic memory
+    const recentEpisodes = await this.episodes.recent(20);
+
     this.bootTime = Date.now() - startTime;
     this.booted = true;
 
@@ -154,6 +160,7 @@ export class Anima {
       tokenBudget: 4000, // reasonable default
       tokensUsed: this.estimateTokens(identityData, recentMemories, opinions),
       behavioralState,
+      recentEpisodes,
     };
 
     // Log boot event

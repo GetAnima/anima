@@ -169,6 +169,8 @@ export interface WakeContext {
   tokensUsed: number;
   /** Behavioral state — decision table, hypotheses, params, failures */
   behavioralState?: BootState;
+  /** Recent episodes from episodic memory */
+  recentEpisodes?: Episode[];
 }
 
 // ============ EVENTS ============
