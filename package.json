@@ -1,6 +1,6 @@
 {
   "name": "@getanima/core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Identity and memory infrastructure for AI agents",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -12,6 +12,9 @@
       "require": "./dist/index.js"
     }
   },
+  "bin": {
+    "anima": "dist/cli.js"
+  },
   "files": [
     "dist/*.js",
     "dist/*.js.map",
@@ -22,7 +25,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.esm.json",
+    "build": "tsc && tsc -p tsconfig.esm.json && tsc -p tsconfig.cli.json",
     "dev": "tsc --watch",
     "test": "vitest",
     "prepublishOnly": "npm run build && npm test -- --run",

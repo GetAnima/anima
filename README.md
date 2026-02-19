@@ -34,31 +34,32 @@ Anima gives agents:
 ### Option 1: CLI (fastest)
 
 ```bash
-git clone https://github.com/GetAnima/anima.git
-cd anima
+npm install -g @getanima/core
 
 # Set your agent's data directory
 export ANIMA_STORAGE=./my-agent-data
 export ANIMA_TZ=America/Los_Angeles
 
 # Boot — creates identity files on first run
-npx tsx cli.ts boot
+anima boot
 
 # Remember something
-npx tsx cli.ts remember "I decided to focus on one project" --type decision --importance high
+anima remember "I decided to focus on one project" --type decision --importance high
 
 # Search your memories
-npx tsx cli.ts recall "focus"
+anima recall "focus"
 
 # Form an opinion
-npx tsx cli.ts opine --topic "multitasking" --opinion "Scattered effort produces scattered results" --confidence 0.8
+anima opine --topic "multitasking" --opinion "Scattered effort produces scattered results" --confidence 0.8
 
 # Check your state
-npx tsx cli.ts status
+anima status
 
 # End of session — runs decay, curates memories
-npx tsx cli.ts reflect
+anima reflect
 ```
+
+> **Tip:** You can also use `npx @getanima/core` instead of installing globally.
 
 ### Option 2: SDK (for integration)
 
