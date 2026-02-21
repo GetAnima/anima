@@ -1,6 +1,6 @@
 {
   "name": "@getanima/core",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Identity and memory infrastructure for AI agents",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -42,7 +42,17 @@
     "identity",
     "persistence",
     "llm",
-    "framework"
+    "framework",
+    "personality",
+    "opinions",
+    "episodic-memory",
+    "relationships",
+    "behavioral-state",
+    "conflict-detection",
+    "typescript",
+    "sdk",
+    "autonomous-agents",
+    "cognitive-architecture"
   ],
   "author": "Kip <kip@getanima.net>",
   "license": "MIT",
