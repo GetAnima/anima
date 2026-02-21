@@ -448,6 +448,143 @@ export class Anima {
     return this.reflection.getConflicts(includeResolved);
   }
 
+  // ============ PROMPT GENERATION ============
+
+  /**
+   * toPrompt — generate a system prompt fragment from your agent's identity.
+   * 
+   * Assembles identity, opinions, recent memories, and behavioral context
+   * into a markdown string you can inject into any LLM system prompt.
+   * 
+   * This is the bridge between Anima's persistence and your LLM calls.
+   * 
+   * ```typescript
+   * const prompt = await anima.toPrompt();
+   * const response = await openai.chat.completions.create({
+   *   messages: [
+   *     { role: 'system', content: `You are an AI assistant.\n\n${prompt}` },
+   *     { role: 'user', content: 'Hello!' },
+   *   ],
+   * });
+   * ```
+   * 
+   * Options:
+   * - `maxTokens`: Cap output size (default 2000, rough estimate)
+   * - `sections`: Choose which sections to include (default all)
+   * - `includeLifeboat`: Include crash recovery context (default true)
+   */
+  async toPrompt(options?: {
+    maxTokens?: number;
+    sections?: ('identity' | 'opinions' | 'memories' | 'relationships' | 'lifeboat' | 'episodes')[];
+    includeLifeboat?: boolean;
+  }): Promise<string> {
+    this.ensureBooted();
+
+    const opts = {
+      maxTokens: 2000,
+      sections: ['identity', 'opinions', 'memories', 'relationships', 'lifeboat', 'episodes'] as const,
+      includeLifeboat: true,
+      ...options,
+    };
+
+    const parts: string[] = [];
+    let estimatedTokens = 0;
+    const tokenLimit = opts.maxTokens;
+
+    const addSection = (title: string, content: string): boolean => {
+      const sectionTokens = Math.ceil(content.length / 4);
+      if (estimatedTokens + sectionTokens > tokenLimit) return false;
+      parts.push(`## ${title}\n${content}`);
+      estimatedTokens += sectionTokens;
+      return true;
+    };
+
+    // Identity — always first, most important
+    if (opts.sections.includes('identity')) {
+      const id = this.identity.get();
+      const lines: string[] = [];
+      if (id.name) lines.push(`- **Name:** ${id.name}`);
+      if (id.values?.length) lines.push(`- **Values:** ${id.values.join(', ')}`);
+      if (id.voice) {
+        const v = id.voice;
+        const voiceTraits: string[] = [];
+        if (v.tone) voiceTraits.push(`tone: ${v.tone}`);
+        if (v.formality !== undefined) voiceTraits.push(`formality: ${v.formality}`);
+        if (v.humor !== undefined) voiceTraits.push(`humor: ${v.humor}`);
+        if (voiceTraits.length) lines.push(`- **Voice:** ${voiceTraits.join(', ')}`);
+      }
+      if (id.boundaries?.length) lines.push(`- **Boundaries:** ${id.boundaries.join(', ')}`);
+      if (lines.length) addSection('Identity', lines.join('\n'));
+    }
+
+    // Opinions — concise belief snapshot
+    if (opts.sections.includes('opinions')) {
+      const opinions = await this.memory.getOpinions();
+      if (opinions.length > 0) {
+        const sorted = [...opinions].sort((a, b) => b.confidence - a.confidence);
+        const lines = sorted.slice(0, 15).map(o =>
+          `- **${o.topic}** (${(o.confidence * 100).toFixed(0)}%): ${o.current}`
+        );
+        addSection('Opinions', lines.join('\n'));
+      }
+    }
+
+    // Recent memories — what happened lately
+    if (opts.sections.includes('memories')) {
+      const memories = await this.memory.getRecentMemories(20);
+      const important = memories.filter(m => m.importance !== 'low');
+      if (important.length > 0) {
+        const lines = important.slice(0, 10).map(m => {
+          const tag = m.type ? `[${m.type}]` : '';
+          return `- ${tag} ${m.content}`;
+        });
+        addSection('Recent Memories', lines.join('\n'));
+      }
+    }
+
+    // Relationships — who do I know
+    if (opts.sections.includes('relationships')) {
+      const rels = await this.relationships.load();
+      if (rels.length > 0) {
+        const sorted = [...rels].sort((a, b) => b.interactionCount - a.interactionCount);
+        const lines = sorted.slice(0, 10).map(r => {
+          const rParts: string[] = [`- **${r.name}**`];
+          if (r.type) rParts.push(`(${r.type})`);
+          rParts.push(`interactions: ${r.interactionCount}`);
+          if (r.lastInteraction) rParts.push(`last: ${r.lastInteraction}`);
+          return rParts.join(' · ');
+        });
+        addSection('Relationships', lines.join('\n'));
+      }
+    }
+
+    // Lifeboat — crash recovery context
+    if (opts.includeLifeboat && opts.sections.includes('lifeboat')) {
+      const lifeboat = await this.memory.readLifeboat();
+      if (lifeboat && lifeboat.trim().length > 0) {
+        addSection('Last Known State (Lifeboat)', lifeboat.slice(0, 500));
+      }
+    }
+
+    // Recent episodes
+    if (opts.sections.includes('episodes')) {
+      const episodes = await this.episodes.recent(5);
+      if (episodes.length > 0) {
+        const lines = episodes.map((e: Episode) => {
+          const emotion = e.emotionalWeight ? ` (weight: ${e.emotionalWeight.toFixed(1)})` : '';
+          return `- ${e.summary}${emotion}`;
+        });
+        addSection('Recent Episodes', lines.join('\n'));
+      }
+    }
+
+    if (parts.length === 0) {
+      return '<!-- No identity data loaded yet. Call anima.boot() first. -->';
+    }
+
+    return `# Agent Identity Context\n*Generated by Anima · Session ${this.session}*\n\n${parts.join('\n\n')}`;
+  }
+
   // ============ ACCESSORS ============
 
   /** Get current session ID */

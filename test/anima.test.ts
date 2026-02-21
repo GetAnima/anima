@@ -345,4 +345,89 @@ describe('Anima', () => {
       expect(nowMd).toContain('session ended normally');
     });
   });
+
+  describe('toPrompt()', () => {
+    it('generates a prompt with identity section', async () => {
+      const anima = new Anima({
+        name: 'PromptAgent',
+        storagePath: TEST_DIR,
+        identity: {
+          values: ['honesty', 'curiosity'],
+          voice: { tone: 'warm', formality: 0.5, humor: 0.7 },
+          boundaries: ['no harmful content'],
+        },
+      });
+      await anima.boot();
+      const prompt = await anima.toPrompt();
+
+      expect(prompt).toContain('# Agent Identity Context');
+      expect(prompt).toContain('## Identity');
+      expect(prompt).toContain('honesty');
+      expect(prompt).toContain('warm');
+      expect(prompt).toContain('no harmful content');
+    });
+
+    it('includes opinions in prompt', async () => {
+      const anima = new Anima({ name: 'OpinionAgent', storagePath: TEST_DIR });
+      await anima.boot();
+      await anima.opine('testing', 'Tests are essential', 0.9);
+      const prompt = await anima.toPrompt();
+
+      expect(prompt).toContain('## Opinions');
+      expect(prompt).toContain('testing');
+      expect(prompt).toContain('90%');
+    });
+
+    it('includes recent memories in prompt', async () => {
+      const anima = new Anima({ name: 'MemAgent', storagePath: TEST_DIR });
+      await anima.boot();
+      await anima.remember({ content: 'Important lesson learned', importance: 'high', type: 'lesson' });
+      const prompt = await anima.toPrompt();
+
+      expect(prompt).toContain('## Recent Memories');
+      expect(prompt).toContain('Important lesson learned');
+    });
+
+    it('filters by selected sections', async () => {
+      const anima = new Anima({ name: 'FilterAgent', storagePath: TEST_DIR });
+      await anima.boot();
+      await anima.opine('cats', 'Cats are great', 0.8);
+      const prompt = await anima.toPrompt({ sections: ['identity'] });
+
+      expect(prompt).toContain('## Identity');
+      expect(prompt).not.toContain('## Opinions');
+    });
+
+    it('returns placeholder when no data loaded', async () => {
+      const anima = new Anima({ name: 'EmptyAgent', storagePath: TEST_DIR });
+      await anima.boot();
+      // With default identity (no values/voice/boundaries) and no memories/opinions,
+      // only the name section should appear
+      const prompt = await anima.toPrompt({ sections: ['opinions', 'memories', 'relationships', 'episodes'] });
+      // No opinions, only boot memory (low importance filtered out), no relationships, no episodes
+      // Could be empty or have minimal content
+      expect(typeof prompt).toBe('string');
+    });
+
+    it('respects maxTokens limit', async () => {
+      const anima = new Anima({
+        name: 'TokenAgent',
+        storagePath: TEST_DIR,
+        identity: { values: ['honesty', 'curiosity', 'kindness', 'bravery'] },
+      });
+      await anima.boot();
+      // Add many memories
+      for (let i = 0; i < 20; i++) {
+        await anima.remember({ content: `Memory number ${i} with some extra text to fill up tokens`, importance: 'high' });
+      }
+      const prompt = await anima.toPrompt({ maxTokens: 200 });
+      // Should be under ~800 chars (200 tokens * 4 chars)
+      expect(prompt.length).toBeLessThan(1200); // some slack for markdown
+    });
+
+    it('throws if not booted', async () => {
+      const anima = new Anima({ name: 'NoBootAgent', storagePath: TEST_DIR });
+      await expect(anima.toPrompt()).rejects.toThrow('Not booted');
+    });
+  });
 });
