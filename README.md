@@ -106,6 +106,40 @@ await anima.checkpoint({
 await anima.reflect(); // decay, curate, summarize
 ```
 
+### Inject Identity into LLM Calls — `toPrompt()`
+
+The bridge between Anima's persistence and your LLM. One call generates a system prompt fragment with your agent's identity, opinions, memories, relationships, and recent episodes:
+
+```typescript
+const prompt = await anima.toPrompt();
+
+// Use with any LLM provider
+const response = await openai.chat.completions.create({
+  messages: [
+    { role: 'system', content: `You are an AI assistant.\n\n${prompt}` },
+    { role: 'user', content: 'Hello!' },
+  ],
+});
+```
+
+Control what's included:
+
+```typescript
+// Minimal — just identity and opinions
+const short = await anima.toPrompt({
+  sections: ['identity', 'opinions'],
+  maxTokens: 500,
+});
+
+// Full context with episodic memory
+const full = await anima.toPrompt({
+  sections: ['identity', 'opinions', 'memories', 'relationships', 'episodes', 'lifeboat'],
+  maxTokens: 4000,
+});
+```
+
+Output is clean markdown. Sections are prioritized (identity first, then opinions, memories, etc.) and automatically truncated at `maxTokens`.
+
 ## CLI Reference
 
 | Command | What it does |
