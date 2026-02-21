@@ -430,4 +430,64 @@ describe('Anima', () => {
       await expect(anima.toPrompt()).rejects.toThrow('Not booted');
     });
   });
+
+  describe('snapshot()', () => {
+    it('exports full agent state as JSON', async () => {
+      const anima = new Anima({
+        name: 'SnapAgent',
+        storagePath: TEST_DIR,
+        identity: { values: ['honesty'] },
+      });
+      await anima.boot();
+      await anima.remember({ content: 'Important event happened', importance: 'high' });
+      await anima.opine('testing', 'Testing is good', 0.9);
+
+      const snap = await anima.snapshot();
+
+      expect(snap.version).toBe('1.0');
+      expect(snap.exportedAt).toBeTruthy();
+      expect(snap.session).toBeTruthy();
+      expect(snap.identity.name).toBeTruthy();
+      expect(snap.memories.length).toBeGreaterThanOrEqual(1);
+      expect(snap.opinions.length).toBeGreaterThanOrEqual(1);
+      expect(Array.isArray(snap.relationships)).toBe(true);
+      expect(Array.isArray(snap.episodes)).toBe(true);
+    });
+
+    it('throws if not booted', async () => {
+      const anima = new Anima({ name: 'NoBootSnap', storagePath: TEST_DIR });
+      await expect(anima.snapshot()).rejects.toThrow('Not booted');
+    });
+  });
+
+  describe('restore()', () => {
+    it('restores memories and opinions from snapshot data', async () => {
+      const anima = new Anima({ name: 'RestoreAgent', storagePath: TEST_DIR });
+
+      const result = await anima.restore({
+        identity: { name: 'RestoredAgent' },
+        memories: [
+          { content: 'Restored memory 1', importance: 'high' },
+          { content: 'Restored memory 2', importance: 'medium' },
+        ],
+        opinions: [
+          { topic: 'typescript', current: 'TypeScript is great', confidence: 0.85 },
+        ],
+      });
+
+      expect(result.restored.identity).toBe(true);
+      expect(result.restored.memories).toBe(2);
+      expect(result.restored.opinions).toBe(1);
+    });
+
+    it('handles partial snapshots gracefully', async () => {
+      const anima = new Anima({ name: 'PartialRestore', storagePath: TEST_DIR });
+      const result = await anima.restore({ memories: [{ content: 'Just one memory' }] });
+
+      expect(result.restored.identity).toBe(false);
+      expect(result.restored.memories).toBe(1);
+      expect(result.restored.opinions).toBe(0);
+      expect(result.restored.relationships).toBe(0);
+    });
+  });
 });
