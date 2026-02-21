@@ -140,6 +140,34 @@ const full = await anima.toPrompt({
 
 Output is clean markdown. Sections are prioritized (identity first, then opinions, memories, etc.) and automatically truncated at `maxTokens`.
 
+### Export & Import Agent State — `snapshot()` / `restore()`
+
+Back up, clone, or migrate your agent's entire identity:
+
+```typescript
+// Export everything — identity, memories, opinions, relationships, episodes
+const state = await anima.snapshot();
+fs.writeFileSync('backup.json', JSON.stringify(state, null, 2));
+
+// Restore into a new instance
+const newAnima = new Anima({ name: 'Clone', storagePath: './clone-data' });
+await newAnima.restore(state);
+await newAnima.boot(); // Ready to go with full history
+```
+
+Partial restores work too — import just memories, just opinions, or any combination:
+
+```typescript
+await anima.restore({
+  opinions: [
+    { topic: 'testing', current: 'Testing is essential', confidence: 0.95 },
+  ],
+  memories: [
+    { content: 'Shipped v1.0 today', importance: 'high' },
+  ],
+});
+```
+
 ## CLI Reference
 
 | Command | What it does |
