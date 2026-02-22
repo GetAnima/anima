@@ -178,6 +178,8 @@ See [`examples/`](./examples) for complete, runnable integrations:
 | [`openai-chat.ts`](./examples/openai-chat.ts) | OpenAI Chat Completions with persistent identity via `toPrompt()` |
 | [`vercel-ai-sdk.ts`](./examples/vercel-ai-sdk.ts) | Vercel AI SDK (`ai` package) with Anima context injection |
 | [`snapshot-restore.ts`](./examples/snapshot-restore.ts) | Export/import full agent state — migration, backup, cloning |
+| [`langchain.ts`](./examples/langchain.ts) | LangChain integration with persistent identity and relationships |
+| [`crewai-style.ts`](./examples/crewai-style.ts) | Multi-agent setup (CrewAI/AutoGen pattern) — independent identities |
 
 ```bash
 npx tsx examples/basic.ts
