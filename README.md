@@ -168,6 +168,21 @@ await anima.restore({
 });
 ```
 
+## Examples
+
+See [`examples/`](./examples) for complete, runnable integrations:
+
+| Example | Description |
+|---------|-------------|
+| [`basic.ts`](./examples/basic.ts) | Full session lifecycle — boot, remember, opine, checkpoint, drift detection, reflect |
+| [`openai-chat.ts`](./examples/openai-chat.ts) | OpenAI Chat Completions with persistent identity via `toPrompt()` |
+| [`vercel-ai-sdk.ts`](./examples/vercel-ai-sdk.ts) | Vercel AI SDK (`ai` package) with Anima context injection |
+| [`snapshot-restore.ts`](./examples/snapshot-restore.ts) | Export/import full agent state — migration, backup, cloning |
+
+```bash
+npx tsx examples/basic.ts
+```
+
 ## CLI Reference
 
 | Command | What it does |
